@@ -1,0 +1,2 @@
+1) Keras Sequential vs Functional API Models
+https://jovianlin.io/keras-models-sequential-vs-functional/
