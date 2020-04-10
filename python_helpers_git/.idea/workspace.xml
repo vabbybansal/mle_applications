@@ -2,11 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="340032b7-2aa4-41ef-acdc-d605eb8d96bc" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/python_helpers/data_manipulation.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/python_helpers/modeling.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/python_helpers/tests/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/python_helpers/tests/test_data_manipulation.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/python_helpers/viz.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <ignored path="$PROJECT_DIR$/out/" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -43,29 +39,35 @@
     <session id="-873640754">
       <usages-collector id="statistics.lifecycle.project">
         <counts>
+          <entry key="project.closed" value="1" />
           <entry key="project.open.time.0" value="1" />
           <entry key="project.opened" value="1" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.extensions.open">
         <counts>
+          <entry key="md" value="1" />
           <entry key="py" value="5" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.types.open">
         <counts>
+          <entry key="Markdown" value="1" />
           <entry key="Python" value="5" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.extensions.edit">
         <counts>
           <entry key="dummy" value="17" />
+          <entry key="md" value="116" />
           <entry key="py" value="1140" />
+          <entry key="txt" value="14" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.types.edit">
         <counts>
-          <entry key="PLAIN_TEXT" value="17" />
+          <entry key="Markdown" value="116" />
+          <entry key="PLAIN_TEXT" value="31" />
           <entry key="Python" value="1140" />
         </counts>
       </usages-collector>
@@ -96,7 +98,7 @@
           </provider>
         </entry>
       </file>
-      <file pinned="false" current-in-tab="true">
+      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/python_helpers/tests/test_data_manipulation.py">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="210">
@@ -109,6 +111,18 @@
                 <marker date="1579498867835" expanded="true" signature="432:451" ph="..." />
                 <marker date="1579498867835" expanded="true" signature="445:446" ph="..." />
               </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/README.md">
+          <provider selected="true" editor-type-id="split-provider[text-editor;markdown-preview-editor]">
+            <state split_layout="SPLIT">
+              <first_editor>
+                <caret column="20" lean-forward="true" selection-start-column="20" selection-end-column="20" />
+              </first_editor>
+              <second_editor />
             </state>
           </provider>
         </entry>
@@ -149,6 +163,7 @@
         <option value="$PROJECT_DIR$/python_helpers/tests/__init__.py" />
         <option value="$PROJECT_DIR$/python_helpers/data_manipulation.py" />
         <option value="$PROJECT_DIR$/python_helpers/tests/test_data_manipulation.py" />
+        <option value="$PROJECT_DIR$/README.md" />
       </list>
     </option>
   </component>
@@ -179,21 +194,6 @@
               <item name="python_helpers_git" type="b2602c69:ProjectViewProjectNode" />
               <item name="python_helpers_git" type="462c0819:PsiDirectoryNode" />
             </path>
-            <path>
-              <item name="python_helpers_git" type="b2602c69:ProjectViewProjectNode" />
-              <item name="python_helpers_git" type="462c0819:PsiDirectoryNode" />
-              <item name="python_helpers" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="python_helpers_git" type="b2602c69:ProjectViewProjectNode" />
-              <item name="python_helpers_git" type="462c0819:PsiDirectoryNode" />
-              <item name="python_helpers" type="462c0819:PsiDirectoryNode" />
-              <item name="tests" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="python_helpers_git" type="b2602c69:ProjectViewProjectNode" />
-              <item name="External Libraries" type="cb654da1:ExternalLibrariesNode" />
-            </path>
           </expand>
           <select />
         </subPane>
@@ -204,7 +204,7 @@
   <component name="PropertiesComponent">
     <property name="WebServerToolWindowFactoryState" value="false" />
     <property name="aspect.path.notification.shown" value="true" />
-    <property name="com.android.tools.idea.instantapp.provision.ProvisionBeforeRunTaskProvider.myTimeStamp" value="1579499145434" />
+    <property name="com.android.tools.idea.instantapp.provision.ProvisionBeforeRunTaskProvider.myTimeStamp" value="1579501480517" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$" />
     <property name="nodejs_interpreter_path.stuck_in_default_project" value="undefined stuck path" />
     <property name="nodejs_npm_path_reset_for_default_project" value="true" />
@@ -309,8 +309,16 @@
       <option name="presentableId" value="Default" />
       <updated>1579468426459</updated>
       <workItem from="1579468429081" duration="436000" />
-      <workItem from="1579473468275" duration="4537000" />
+      <workItem from="1579473468275" duration="4933000" />
     </task>
+    <task id="LOCAL-00001" summary="updated Readme">
+      <created>1579499453087</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1579499453087</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="TestHistory">
@@ -346,13 +354,13 @@
     </history-entry>
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="4973000" />
+    <option name="totallyTimeSpent" value="5369000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="0" y="0" width="1440" height="900" extended-state="0" />
     <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.2532189" />
+      <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.2532189" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Image Layers" order="2" />
       <window_info id="Designer" order="3" />
@@ -362,7 +370,7 @@
       <window_info anchor="bottom" id="Messages" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" />
-      <window_info active="true" anchor="bottom" id="Run" order="2" visible="true" weight="0.32891566" />
+      <window_info anchor="bottom" id="Run" order="2" weight="0.32891566" />
       <window_info anchor="bottom" id="Debug" order="3" weight="0.4" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
@@ -388,6 +396,10 @@
   </component>
   <component name="VcsContentAnnotationSettings">
     <option name="myLimit" value="2678400000" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="updated Readme" />
+    <option name="LAST_COMMIT_MESSAGE" value="updated Readme" />
   </component>
   <component name="editorHistoryManager">
     <entry file="file://$PROJECT_DIR$/python_helpers/__init__.py">
@@ -429,6 +441,16 @@
             <marker date="1579498867835" expanded="true" signature="432:451" ph="..." />
             <marker date="1579498867835" expanded="true" signature="445:446" ph="..." />
           </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/README.md">
+      <provider selected="true" editor-type-id="split-provider[text-editor;markdown-preview-editor]">
+        <state split_layout="SPLIT">
+          <first_editor>
+            <caret column="20" lean-forward="true" selection-start-column="20" selection-end-column="20" />
+          </first_editor>
+          <second_editor />
         </state>
       </provider>
     </entry>
