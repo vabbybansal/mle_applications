@@ -4,6 +4,8 @@ from sklearn.impute import SimpleImputer
 from sklearn.pipeline import FeatureUnion, Pipeline 
 import general.scripts.data_manipulation as manip
 import pandas as pd
+import numpy as np
+from datetime import datetime
 import re
 
 # Transformers
@@ -91,6 +93,45 @@ class Reshape1DTo2D(BaseEstimator, TransformerMixin):
         # Currently return nDArray
         return X.reshape((X.shape[0], 1))
 
+class Series_ApplyFn(BaseEstimator, TransformerMixin):
+    def __init__(self, fn, args=None):
+        self.fn = fn
+        self.args = args
+    # Calculate some parameters
+    def fit(self, X, y = None):
+        return self
+    # Do the transformation
+    def transform(self, X, y = None): 
+        print 'Started Lambda Transform'
+        # if reshaped to have 2nd dimension, reshape back to one-D
+        if len(X.shape) == 2 and X.shape[1] == 1:
+            X = X.reshape((X.shape[0],))
+        if type(X) == np.ndarray:
+            X = pd.Series(X)
+        if self.args == None:
+            return X.apply(self.fn)
+        else: return X.apply(self.fn, args=self.args)
+
+class DF_ApplyLambda(BaseEstimator, TransformerMixin):
+    # USAGE
+    #     ('compute', transformers.DF_ApplyLambda(
+    #                                             lambda x: 
+    #                                                      (
+    #                                                          datetime.strptime(x['col1'], "%Y-%m-%d")
+    #                                                          -
+    #                                                          datetime.strptime(x['col2'], "%Y-%m-%d")
+    #                                                      ).days
+    #         ))
+    def __init__(self, lambda_function):
+        self.lambda_function = lambda_function
+    # Calculate some parameters
+    def fit(self, X, y = None):
+        return self
+    # Do the transformation
+    def transform(self, X, y = None): 
+        print 'Started DF Lambda Transform'
+        return X.apply(self.lambda_function, axis=1)
+    
 class GroupByApplyLambda(BaseEstimator, TransformerMixin):
     def __init__(self, group_list, lambda_function):
         self.group_list = group_list
