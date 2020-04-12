@@ -55,6 +55,41 @@ class Metrics(object):
                           xaxis='FPR',
                           yaxis='TPR'
                           )
+    def draw_pr_curve_plt(self, Y_valid, y_pred, x_range=1.0):
+#     (precision, recall, x_range=1.0):
+
+        precision, recall, thresholds_pr = precision_recall_curve(Y_valid, y_pred)
+     
+        # import dependencies
+        import matplotlib.pyplot as plt
+
+        plt.step(recall, precision, color='b', alpha=0.2,
+                 where='post')
+        plt.fill_between(recall, precision, alpha=0.2, color='b')
+        plt.xlabel('Recall')
+        plt.ylabel('Precision')
+        plt.ylim([0.0, 1.05])
+        plt.xlim([0.0, x_range])
+        plt.show()
+
+
+    # Create ROC curve using matplotlib
+    def draw_roc_curve_plt(self, Y_valid, y_pred):
+#     (fpr, tpr, auc):
+        # import dependencies
+        import matplotlib.pyplot as plt
+        fpr, tpr, thresholds_roc = roc_curve(Y_valid, y_pred)
+        auc_roc = auc(fpr, tpr)
+        
+        plt.figure(1)
+        plt.plot([0, 1], [0, 1], 'k--')
+        plt.plot(fpr, tpr, label='(area = {:.3f})'.format(auc_roc))
+        # plt.plot(fpr_rf, tpr_rf, label='RF (area = {:.3f})'.format(auc_rf))
+        plt.xlabel('False positive rate')
+        plt.ylabel('True positive rate')
+        plt.title('ROC curve')
+        plt.legend(loc='best')
+        plt.show()
 
 class VIZ_Generics(object):
     
@@ -130,3 +165,4 @@ class VIZ_Generics(object):
 
             # Plot the figure
             iplot(fig)
+            
