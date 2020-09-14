@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
-import seaborn as sns
+# import seaborn as sns
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_curve
 from sklearn.metrics import auc
@@ -33,7 +33,7 @@ class Metrics(object):
         auc_roc = auc(fpr, tpr)
 
         # Draw PR Curve
-        print '\n PR Curve'
+        print('\n PR Curve')
         viz_generics = VIZ_Generics()
 
         viz_generics.plotly_chart(recall,
@@ -46,7 +46,7 @@ class Metrics(object):
 
 
         # Draw ROC
-        print '\n ROC Curve'
+        print('\n ROC Curve')
 
         viz_generics.plotly_chart(fpr,
                           tpr,
@@ -94,7 +94,86 @@ class Metrics(object):
 class VIZ_Generics(object):
     
     def __init__(self):
+        self.series = {} 
         pass
+    
+    
+    def compare_dist(self, df, numer_var, group_var, xlim, title):
+        # group_var assumed to be Bool
+        self.series['false'] = (df[(df[numer_var]<xlim) & (df[group_var]==False)])[numer_var].sample((df[(df[numer_var]<xlim) & (df[group_var]==True)])[numer_var].shape[0])
+        print(self.series['false'].shape[0])
+        plt.hist(
+            self.series['false'],
+            bins=int(xlim/3), 
+            color='b',
+            alpha=0.5,
+            label='Lost'
+        )
+        plt.legend(loc='upper right')
+        plt.axvline(x=self.series['false'].median(), color='r', alpha=0.2)
+
+        self.series['true'] = (df[(df[numer_var]<xlim) & (df[group_var]==True)])[numer_var]
+        print(self.series['true'].shape[0])
+        plt.hist(
+            self.series['true'],
+            bins=int(xlim/3), 
+            color='r',
+            alpha=0.5,
+            label='Won'
+        )
+        plt.legend(loc='upper right')
+        plt.axvline(x=self.series['true'].median(), color='b', alpha=0.2)
+        plt.title(title)
+        # plt.xlim(0, xlim)
+        # plt.ylim(0, 1000000)
+
+        plt.show()
+        
+    # Needs to run after compare_dist
+    def compare_dist_bins(self, title, cuts=15):
+        false = self.series['false'].value_counts().reset_index()
+        true = self.series['true'].value_counts().reset_index()
+
+        false.columns = ['metric', 'count_false']
+        true.columns = ['metric', 'count_true']
+
+        print(true['count_true'].sum() == false['count_false'].sum())
+        total = true.merge(false, on='metric').sort_values('metric').reset_index(drop=True)
+
+        # plt.show()
+        total['disputed_amount'] = pd.cut(total['metric'], cuts)
+        total.groupby('disputed_amount')[['count_true', 'count_false']].sum().plot.bar()
+        plt.title(title)
+        plt.xticks(rotation=50)
+        plt.show()
+     
+    def pivot_bar_chart(self, df, categorical_col, group_col, some_col, count_min_limit):
+        df[categorical_col] = df[categorical_col].astype(str).fillna(".").apply(lambda x: x[0:20])
+        xx = df.groupby([categorical_col, group_col]).count()[some_col].reset_index()
+        xx.columns = [categorical_col, group_col, 'counts']
+
+        xx = xx.pivot_table(values='counts', columns=group_col, index=categorical_col).fillna(0).reset_index()
+        xx['total'] = xx[False] + xx[True]
+        xx.sort_values('total', ascending=False)
+
+        xx[xx['total']>count_min_limit][[categorical_col, True, False]].set_index(categorical_col).plot.bar(stacked=False)
+        plt.xticks(rotation=75)
+        fig = plt.gcf()
+        fig.set_size_inches(15, 4)
+
+        plt.show()
+
+    def compare_density(self, df, numer_var, group_var, title, xlim=100):
+        df[df[group_var]==True][numer_var].astype(float).plot.kde(label='Won', color='r', alpha=0.5)
+        plt.axvline(x=df[df[group_var]==True][numer_var].astype(float).median(), color='r', alpha=0.2)
+        plt.legend(loc='upper right')
+        df[df[group_var]==False][numer_var].astype(float).plot.kde(label='Lost', color='b', alpha=0.5)
+        plt.axvline(x=df[df[group_var]==False][numer_var].astype(float).median(), color='b', alpha=0.2)
+        plt.legend(loc='upper right')
+        plt.title(title)
+        plt.xlim(0, xlim)
+        plt.show()
+
     
     def highest_recall_at_precision(self, y_test, y_pred, reqd_precision):
         temp_thresh = 0.00
@@ -118,24 +197,24 @@ class VIZ_Generics(object):
     # Return precision and recall for a threshold along with the confusion matrix
     def print_conf_matrix(self, y_test, y_pred, thresh):
 
-        print 'threshold: ' + str(thresh)
+        print('threshold: ' + str(thresh))
 
         y_pred_bool = (y_pred > thresh)
         y_pred_binary = pd.Series(y_pred_bool).map({True:1, False:0})
 
         conf_matrix = pd.crosstab((pd.Series(y_pred_bool, name='Predicted') >thresh), pd.Series(y_test, name='Actual') == True, dropna = False)
-        print '____'
-        print conf_matrix
-        print conf_matrix.shape
+        print('____')
+        print(conf_matrix)
+        print(conf_matrix.shape)
 
-        print '____'
+        print('____')
         if conf_matrix.shape[0] == 2 and conf_matrix.shape[1] == 2:
-            print 'Precision: ' + str(conf_matrix[1][1] / float(conf_matrix[1][1] + conf_matrix[0][1]))
-            print 'Recall: ' + str(conf_matrix[1][1] / float(conf_matrix[1][0] + conf_matrix[1][1]))
-            print 'Accuracy: ' + str((conf_matrix[1][1] + conf_matrix[0][0]) / float(conf_matrix.sum().sum()))
+            print('Precision: ' + str(conf_matrix[1][1] / float(conf_matrix[1][1] + conf_matrix[0][1])))
+            print('Recall: ' + str(conf_matrix[1][1] / float(conf_matrix[1][0] + conf_matrix[1][1])))
+            print('Accuracy: ' + str((conf_matrix[1][1] + conf_matrix[0][0]) / float(conf_matrix.sum().sum())))
 
             # Get False positives
-            print 'Returned Binary Preds, False Positive and False negative Array as Tuples'
+            print('Returned Binary Preds, False Positive and False negative Array as Tuples')
             false_positive_arr = (y_pred_bool == True) & (y_test == False)
             false_negative_arr = (y_pred_bool == False) & (y_test == True)
             return (y_pred_binary, (false_positive_arr, false_negative_arr))

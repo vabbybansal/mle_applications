@@ -3,6 +3,7 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import FeatureUnion, Pipeline 
 import general.scripts.data_manipulation as manip
+# import data_manipulation as manip
 import pandas as pd
 import numpy as np
 from datetime import datetime
@@ -17,12 +18,12 @@ class BasicDFCleaning(BaseEstimator, TransformerMixin):
         return self
     # Do the transformation
     def transform(self, X, y = None):
-        print 'Started DF Cleaning'
+        print('Started DF Cleaning')
         # Check for the data manipulation library
         try:
             manip
         except NameError:
-            print 'Manipulation lib not imported | Exiting!'
+            print('Manipulation lib not imported | Exiting!')
             return X
         
         # Remove table alias + Remove unnamed cols
@@ -54,17 +55,22 @@ class CategoricalCleaning(BaseEstimator, TransformerMixin):
         return self
     # Do the transformation
     def transform(self, X, y = None):
-        print 'Started Categorical Cleaning'
+        print('Started Categorical Cleaning')
         categ_columns = X.columns
         for col in categ_columns:
             self.col_name = col
-            X[col] = X[col].progress_apply(self.string_normalize)
+#             X[col] = X[col].progress_apply(self.string_normalize)
+            X[col] = X[col].apply(self.string_normalize)
         return X
     def string_normalize(self, x):
         x = x.replace('-','_')
         x = re.sub('\s+',' ',x)
         x = x.replace(' ', '_')
         x = x.lower()
+#         x = x.encode('utf-8').strip()
+        encoded_string = x.encode("ascii", "ignore")
+        x = encoded_string.decode()
+
         # replace missing value with a prefix
         if x=='missing':
             x = x+'_'+self.col_name
@@ -90,6 +96,7 @@ class Reshape1DTo2D(BaseEstimator, TransformerMixin):
     def transform(self, X, y = None):   
         if type(X) == pd.core.series.Series:
             X = X.values
+#             print(X)
         # Currently return nDArray
         return X.reshape((X.shape[0], 1))
 
@@ -102,7 +109,7 @@ class Series_ApplyFn(BaseEstimator, TransformerMixin):
         return self
     # Do the transformation
     def transform(self, X, y = None): 
-        print 'Started Lambda Transform'
+        print('Started Lambda Transform')
         # if reshaped to have 2nd dimension, reshape back to one-D
         if len(X.shape) == 2 and X.shape[1] == 1:
             X = X.reshape((X.shape[0],))
@@ -112,7 +119,51 @@ class Series_ApplyFn(BaseEstimator, TransformerMixin):
             return X.apply(self.fn)
         else: return X.apply(self.fn, args=self.args)
 
-class DF_ApplyLambda(BaseEstimator, TransformerMixin):
+# Apply some function to a subset of columns. Optionally pass make_as_new=True to make the new transformations new columns
+class Series_ApplyFn_SubsetDF(BaseEstimator, TransformerMixin):
+    def __init__(self, column_subset, lambda_function, make_as_new=False, new_column_names_list=[]):
+        self.lambda_function = lambda_function
+        self.column_subset = column_subset
+        self.make_as_new = make_as_new
+        self.new_column_names_list = new_column_names_list
+    # Calculate some parameters
+    def fit(self, X, y = None):
+        return self
+    # Do the transformation
+    def transform(self, X, y = None): 
+        print('Started Series_ApplyFn_SubsetDF Transform')
+        if self.make_as_new == False:
+            X[self.column_subset] = X[self.column_subset].apply(self.lambda_function, axis=0)
+        else:
+            if len(self.new_column_names_list) == 0 or len(self.new_column_names_list) != len(self.column_subset):
+                self.new_column_names_list = []
+                for i in range(len(self.column_subset)):
+                    self.new_column_names_list.append('new_col_trans_'+str(i))
+            X[self.new_column_names_list] = X[self.column_subset].apply(self.lambda_function, axis=0)
+        return X
+
+
+class DF_ApplyLambda_Row(BaseEstimator, TransformerMixin):
+    # USAGE
+    #     ('compute', transformers.DF_ApplyLambda_Row(
+    #                                             lambda x: 
+    #                                                      (
+    #                                                          datetime.strptime(x['col1'], "%Y-%m-%d")
+    #                                                          -
+    #                                                          datetime.strptime(x['col2'], "%Y-%m-%d")
+    #                                                      ).days
+    #         ))
+    def __init__(self, lambda_function):
+        self.lambda_function = lambda_function
+    # Calculate some parameters
+    def fit(self, X, y = None):
+        return self
+    # Do the transformation
+    def transform(self, X, y = None): 
+        print('Started DF Lambda Transform')
+        return X.progress_apply(self.lambda_function, axis=1)
+
+class DF_ApplyLambda_Col(BaseEstimator, TransformerMixin):
     # USAGE
     #     ('compute', transformers.DF_ApplyLambda(
     #                                             lambda x: 
@@ -129,8 +180,8 @@ class DF_ApplyLambda(BaseEstimator, TransformerMixin):
         return self
     # Do the transformation
     def transform(self, X, y = None): 
-        print 'Started DF Lambda Transform'
-        return X.apply(self.lambda_function, axis=1)
+        print('Started DF Lambda Transform')
+        return X.progress_apply(self.lambda_function, axis=0)
     
 class GroupByApplyLambda(BaseEstimator, TransformerMixin):
     def __init__(self, group_list, lambda_function):
@@ -141,9 +192,24 @@ class GroupByApplyLambda(BaseEstimator, TransformerMixin):
         return self
     # Do the transformation
     def transform(self, X, y = None): 
-        print 'Started Group Column Lambda Transform'
+        print('Started Group Column Lambda Transform')
         out = X.groupby(self.group_list).progress_apply(self.lambda_function).reset_index().sort_values(self.group_list)
         return out
+
+class LambdaOnDF(BaseEstimator, TransformerMixin):
+    def __init__(self, lambda_function):
+        self.lambda_function = lambda_function
+    # Calculate some parameters
+    def fit(self, X, y = None):
+        return self
+    # Do the transformation
+    def transform(self, X, y = None): 
+        print('Started LambdaOnDF Transform')
+#         return (lambda x: x.set_index('contact_uuid').apply(pd.Series.explode).reset_index())(df_all_class_csv_1)
+        return self.lambda_function(X)
+#         df_all_class_csv_1.set_index('contact_uuid').apply(pd.Series.explode).reset_index()
+#         out = X.groupby(self.group_list).progress_apply(self.lambda_function).reset_index().sort_values(self.group_list)
+
 
 # depends currently on tqdm
 class GroupFeaturesColumnIntoList(BaseEstimator, TransformerMixin):
@@ -157,7 +223,7 @@ class GroupFeaturesColumnIntoList(BaseEstimator, TransformerMixin):
         return self
     # Do the transformation
     def transform(self, X, y = None): 
-        print 'Started Group Column to List transform'
+        print('Started Group Column to List transform')
         if self.sort_list == None:
             return X.groupby(self.group_list)[self.column_to_list].progress_apply(list).reset_index().sort_values(self.group_list)
         else:
@@ -169,25 +235,25 @@ class GroupByCreateText(BaseEstimator, TransformerMixin):
         self.word_order_columns = word_order_columns
         self.column_to_text = column_to_text
     def textize(self, column):
-#         print df
+#         print(df)
         outString = ''
         for val in column:
             outString += val
             outString += ' '
-#         print '2'
+#         print('2')
         return outString
     # Calculate some parameters
     def fit(self, X, y = None):
         return self
     # Do the transformation
     def transform(self, X, y = None): 
-#         print '3'
-        print 'Started GroupByCreateText Transform'
+#         print('3')
+        print('Started GroupByCreateText Transform')
         if self.word_order_columns == None:
-#             print '4'
+#             print('4')
             return X.groupby(self.group_list)[self.column_to_text].progress_apply(self.textize).reset_index().sort_values(self.group_list)
         else:
-#             print '5'
+#             print('5')
             return X.sort_values(self.word_order_columns, ascending=self.ascending).groupby(self.group_list)[self.column_to_text].progress_apply(self.textize).reset_index().sort_values(self.group_list)
 
 class GroupBySelectOne(BaseEstimator, TransformerMixin):
@@ -200,7 +266,7 @@ class GroupBySelectOne(BaseEstimator, TransformerMixin):
         return column.iloc[0]
     # Do the transformation
     def transform(self, X, y = None): 
-        print 'Started GroupBySelectOne Transform'
+        print('Started GroupBySelectOne Transform')
         return X.groupby(self.group_list)[self.column_to_select].progress_apply(self.pick_one).reset_index().sort_values(self.group_list)
 
 class ColumnToSortedDistinctSeries(BaseEstimator, TransformerMixin):
@@ -211,7 +277,7 @@ class ColumnToSortedDistinctSeries(BaseEstimator, TransformerMixin):
         return self
     # Do the transformation
     def transform(self, X, y = None): 
-        print 'Started ColumnToSortedDistinctSeries Transform'
+        print('Started ColumnToSortedDistinctSeries Transform')
         uniques = pd.Series(X[self.column_name].unique()).sort_values().values
         return uniques.reshape((uniques.shape[0],1))
 
@@ -232,15 +298,15 @@ class GroupMultiCategoricalToPivotedColumnsWithExternalValue(BaseEstimator, Tran
         return self.column_names_list.tolist()
     
     def fit(self, X, y = None):
-#         print 'IN FIT: ' + str(self.column_to_pivot)
+#         print('IN FIT: ' + str(self.column_to_pivot))
         unique_vals = X[self.column_to_pivot].unique()
         self.column_names_list = 'pivot_'+ self.column_to_pivot + '_' + unique_vals
         self.column_names_list.sort()
         return self
     # Do the transformation
     def transform(self, X, y = None): 
-        print 'IN TRANSFORM' + str(self.column_to_pivot)
-        print 'Started GroupMultiCategoricalToPivotedColumnsWithExternalValue Transform'
+        print('IN TRANSFORM' + str(self.column_to_pivot))
+        print('Started GroupMultiCategoricalToPivotedColumnsWithExternalValue Transform')
         # Group | Also, resolve Multiple criteria 2 as mentioned above. Now each 'value' has one instance per group
         stacked = X.groupby([self.column_to_group] + [self.column_to_pivot] )[self.column_with_values].progress_apply(self.choose_from_multiple_values_criterion)
         unstacked = stacked.unstack()
@@ -262,7 +328,7 @@ class GroupMultiCategoricalToPivotedColumnsWithExternalValue(BaseEstimator, Tran
                 list_cols_needed.append(col)
                 
         for col in list_cols_needed:
-#             print 'Adding column - ' + col
+#             print('Adding column - ' + col)
             unstacked[col] = self.fill_value
         
         

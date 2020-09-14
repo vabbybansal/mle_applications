@@ -67,7 +67,7 @@ class NBModel(Model):
         # Model type
 #         self.model_obj = self.getNBType(self.model_type)
     def pre_fit(self):
-        print 'Class Distribution: ' + str(pd.Series(self.ytrain).mean())
+        print('Class Distribution: ' + str(pd.Series(self.ytrain).mean()))
     def predict(self, one_off_set=None):
         if one_off_set == None:
             return self.model_obj.predict_proba(self.Xtest)[:,1]
@@ -81,7 +81,7 @@ class XGBoostModel(Model):
         self.max_depth = max_depth
         super(XGBoostModel, self).__init__(Xtrain, ytrain, Xtest, ytest, model_type)
     def pre_fit(self):
-        print 'Class Distribution: ' + str(pd.Series(self.ytrain).mean())
+        print('Class Distribution: ' + str(pd.Series(self.ytrain).mean()))
     def predict(self, one_off_set=None):
         if one_off_set is None:
             return self.model_obj.predict_proba(self.Xtest)[:,1]
@@ -108,7 +108,7 @@ class XGBoostModel(Model):
 #         else:
 #             return MultinomialNB(alpha=self.alpha)
 #     def pre_fit(self):
-#         print 'Class Distribution: ' + str(pd.Series(self.ytrain).mean())
+#         print('Class Distribution: ' + str(pd.Series(self.ytrain).mean()))
 #     def fit_predict_viz(self):
 #         self.pre_fit()
 #         self.fit()
@@ -155,7 +155,7 @@ class XGBoostModel_CV(object):
 
     def train(self, X_train, Y_train, config=None):
 
-        print '\nLog Training Data Set Shape:' + str(X_train.shape)
+        print('\nLog Training Data Set Shape:' + str(X_train.shape))
 
         if config == None:
             # Train
@@ -166,7 +166,7 @@ class XGBoostModel_CV(object):
             self.model.fit(X_train, Y_train)
 
     def predictAndMetrics(self, X_valid, Y_valid):
-        print '\nLog Test Data Set Shape:' + str(X_valid.shape)
+        print('\nLog Test Data Set Shape:' + str(X_valid.shape))
 
         self.y_pred = self.model.predict_proba(X_valid)[:,1]
         self.precision, self.recall, self.thresholds_pr = precision_recall_curve(Y_valid, self.y_pred)
@@ -174,7 +174,7 @@ class XGBoostModel_CV(object):
         self.auc_roc = auc(self.fpr, self.tpr)
 
         # Draw PR Curve
-        print '\n PR Curve'
+        print('\n PR Curve')
 
         self.plotly_chart(self.recall,
                           self.precision,
@@ -187,7 +187,7 @@ class XGBoostModel_CV(object):
         #         self.draw_pr_curve(self.precision, self.recall)
 
         # Draw ROC
-        print '\n ROC Curve'
+        print('\n ROC Curve')
         #         self.draw_roc_curve(self.fpr, self.tpr, self.auc_roc)
 
         self.plotly_chart(self.fpr,
@@ -200,7 +200,7 @@ class XGBoostModel_CV(object):
 
 
         # Draw Feature Importance curves
-        print '\n Feature Importance - Gain'
+        print('\n Feature Importance - Gain')
         plot_importance(self.model, importance_type='gain')
         plt.show()
 

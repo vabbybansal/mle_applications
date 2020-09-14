@@ -63,19 +63,19 @@ def draw_roc_curve(fpr, tpr, auc):
 
 # Return precision and recall for a threshold along with the confusion matrix
 def print_conf_matrix(y_test, y_pred, thresh):
-    print 'threshold: ' + str(thresh)
+    print('threshold: ' + str(thresh))
 
     y_pred_bool = (y_pred > thresh)
 
     conf_matrix = pd.crosstab((pd.Series(y_pred_bool, name='Predicted') > thresh),
                               pd.Series(y_test, name='Actual') == True, dropna=False)
-    print '____'
-    print conf_matrix
+    print('____')
+    print(conf_matrix)
 
-    print '____'
-    print 'Precision: ' + str(conf_matrix[1][1] / float(conf_matrix[1][1] + conf_matrix[0][1]))
-    print 'Recall: ' + str(conf_matrix[1][1] / float(conf_matrix[1][0] + conf_matrix[1][1]))
-    print 'Accuracy: ' + str((conf_matrix[1][1] + conf_matrix[0][0]) / float(conf_matrix.sum().sum()))
+    print('____')
+    print('Precision: ' + str(conf_matrix[1][1] / float(conf_matrix[1][1] + conf_matrix[0][1])))
+    print('Recall: ' + str(conf_matrix[1][1] / float(conf_matrix[1][0] + conf_matrix[1][1])))
+    print('Accuracy: ' + str((conf_matrix[1][1] + conf_matrix[0][0]) / float(conf_matrix.sum().sum())))
 
     # Get False positives
     false_positive_arr = (y_pred_bool == True) & (y_test == False)
@@ -104,7 +104,7 @@ def remove_unnamed_cols(df):
         col_name = col_list[i]
         df = df.drop(col_name, axis=1)
         num += 1
-    print ' Removed Cols: ' + str(num)
+    print(' Removed Cols: ' + str(num))
 
     return df
 
@@ -112,7 +112,7 @@ def remove_unnamed_cols(df):
 # Clean column names to have only alphabetical/numerical or -,_
 def cleanse_col_names(col_names):
     if ((type(col_names)) is not list) and ((type(col_names)) is not pd.core.indexes.base.Index):
-        print 'Handled Error: Input not a list'
+        print('Handled Error: Input not a list')
         return 0
 
     # import dependencies
@@ -129,7 +129,7 @@ def cleanse_col_names(col_names):
             i += 1
     return new_names
 
-# print cleanse_col_names('yo')
+# print(cleanse_col_names('yo'))
 
 def temp():
-    print 'Yo'
+    print('Yo')

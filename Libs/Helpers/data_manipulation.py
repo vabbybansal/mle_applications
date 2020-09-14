@@ -25,17 +25,17 @@ def replace_col_with_one_hot(df, col, drop_column=False, drop_first=False, metho
     # Get one-hot encoding
     one_hot, conversion_signal = convert_col_one_hot_series(df[col])
 
-    print '~~~~~~~~~~'
+    print('~~~~~~~~~~')
 
     if conversion_signal == 0:
-        print 'Not transforming column ' + str(col) + ' | already numerical'
+        print('Not transforming column ' + str(col) + ' | already numerical')
         return df
 
     if df[col].dtype == bool:
         df[col] = one_hot
-        print one_hot.name
+        print(one_hot.name)
     else:
-        print one_hot.columns
+        print(one_hot.columns)
         if drop_column:
             df = df.drop(col,axis = 1)
 
@@ -88,7 +88,7 @@ def remove_unnamed_cols(df):
         col_name = col_list[i]
         df = df.drop(col_name, axis=1)
         num += 1
-    print ' Removed Cols: ' + str(num)
+    print(' Removed Cols: ' + str(num))
 
     return df
 
@@ -97,7 +97,7 @@ def remove_unnamed_cols(df):
 # *************************************************************
 def cleanse_col_names(col_names):
     if ((type(col_names)) is not list) and ((type(col_names)) is not pd.core.indexes.base.Index):
-        print 'Handled Error: Input not a list'
+        print('Handled Error: Input not a list')
         return 0
 
     # import dependencies
