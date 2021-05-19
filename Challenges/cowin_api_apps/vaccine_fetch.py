@@ -98,4 +98,4 @@ def main():
 main()
 
 # crontab syntax
-# */1 * * * * python /Users/vaibhavb/Desktop/repos/mle_applications/Challenges/cowin_api_apps/test1.py
+# */3 * * * * /Users/vaibhavb/miniconda3/bin/python /Users/vaibhavb/Desktop/repos/mle_applications/Challenges/cowin_api_apps/vaccine_fetch.py
