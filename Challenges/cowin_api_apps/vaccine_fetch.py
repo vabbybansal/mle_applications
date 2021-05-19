@@ -9,10 +9,10 @@ import logging
 
 # CONSTANTS
 URLSTRING_VACCINE_BY_DISTRICT = "https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/findByDistrict?district_id={district_id}&date={datestr}" 
-CSV_FILE_NAME = '/Users/vaibhavb/Desktop/repos/mle_applications/Challenges/cowin_api_apps/vaccine_availability.csv'
+CSV_FILE_NAME = '/Users/vaibhavb/Desktop/repos/dump/mle_applications/Challenges/cowin_api_apps/vaccine_availability.csv'
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
-LOG_FILE_NAME = os.path.join(dir_path, '/Users/vaibhavb/Desktop/repos/mle_applications/Challenges/cowin_api_apps/test_log.log')
+LOG_FILE_NAME = os.path.join(dir_path, '/Users/vaibhavb/Desktop/repos/dump/mle_applications/Challenges/cowin_api_apps/test_log.log')
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 file_handler = logging.FileHandler(LOG_FILE_NAME)
