@@ -1,0 +1,2 @@
+This project is to test out basic curling functionality in python, and creates an application to fetch covid vaccination information from GOI's public APIs through the Cowin platform.
+Future Scope - Create email / alerting functionality
