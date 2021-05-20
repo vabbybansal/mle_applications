@@ -137,4 +137,4 @@ def main():
 main()
 
 # crontab syntax
-# */3 * * * * /Users/vaibhavb/miniconda3/bin/python /Users/vaibhavb/Desktop/repos/mle_applications/Challenges/cowin_api_apps/vaccine_fetch.py
+# */3 * * * * EXPORT ENV_VAR="xx"; /Users/vaibhavb/miniconda3/bin/python /Users/vaibhavb/Desktop/repos/mle_applications/Challenges/cowin_api_apps/vaccine_fetch.py
