@@ -6,6 +6,9 @@ import os
 import os.path
 from os import path
 import logging
+import smtplib, ssl
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 # CONSTANTS
 URLSTRING_VACCINE_BY_DISTRICT = "https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/calendarByDistrict?district_id={district_id}&date={datestr}" 
@@ -91,14 +94,45 @@ def write_row_vaccine_by_district(data_row):
 	    writer.writerow(data_row)
 	    file_object.close()
 
+def mailer(email_html_content, subject):
+
+	# Get mail server secrets from environment
+	port = int(os.environ.get("COVID_SCRIPT_VAR_PORT"))  # For SSL
+	smtp_server = os.environ.get("COVID_SCRIPT_VAR_SMPT_SERVER")
+	sender_email = os.environ.get("COVID_SCRIPT_VAR_SENDER_EMAIL")  # Enter your address
+	receiver_email = os.environ.get("COVID_SCRIPT_VAR_RECEIVER_EMAIL")  # Enter receiver address
+	password = os.environ.get("COVID_SCRIPT_VAR_PASSWORD")
+
+	message = MIMEMultipart("alternative")
+	message["Subject"] = subject
+	message["From"] = sender_email
+	message["To"] = receiver_email
+
+	# Create the plain-text and HTML version of your message
+	message.attach(MIMEText(email_html_content, "html"))
+
+	context = ssl.create_default_context()
+	with smtplib.SMTP_SSL(smtp_server, port, context=context) as server:
+		server.login(sender_email, password)
+		server.sendmail(sender_email, receiver_email, message.as_string())
+
 
 def main():
 	do_logging("started")
 	today_datestr = (datetime.date.today() + datetime.timedelta(days=0)).strftime("%d-%m-%Y")
 	for city_date_tuple in [(DISTRICT_MAP['New_Delhi'], today_datestr), (DISTRICT_MAP['Gurgaon'], today_datestr)]:
 		data_row = get_vaccine_metrics_by_district(city_date_tuple[0], city_date_tuple[1])
-		print(data_row)
 		write_row_vaccine_by_district(data_row)
+		if data_row[3] == 'Gurgaon' and 'COVAXIN' in json.loads(data_row[-1]):
+			email_html_content = """\
+				<html>
+				  <body>
+				   	<div>{slots_info}</div> 
+				  </body>
+				</html>
+				""".format(slots_info=data_row[-1])
+			subject = "Gurgaon Covaxin Vaccine Slots Available"
+			mailer(email_html_content, subject)
 	do_logging("exiting")
 main()
 
