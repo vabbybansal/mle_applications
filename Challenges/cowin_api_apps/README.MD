@@ -1,4 +1,4 @@
 - This project is to test out basic curling functionality in python, and creates an application to fetch covid vaccination information from GOI's public APIs through the Cowin platform.
 - Added Email Alerts functionality from the local machine using gmail development server
 - Stored Email server secrets as environment variables
-- Future Scope: Config driven alert subscription
+- Future Scope: Config driven alert subscription, Tests

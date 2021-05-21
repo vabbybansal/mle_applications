@@ -9,6 +9,7 @@ import logging
 import smtplib, ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import pandas as pd
 
 # CONSTANTS
 URLSTRING_VACCINE_BY_DISTRICT = "https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/calendarByDistrict?district_id={district_id}&date={datestr}" 
@@ -123,16 +124,23 @@ def main():
 	for city_date_tuple in [(DISTRICT_MAP['New_Delhi'], today_datestr), (DISTRICT_MAP['Gurgaon'], today_datestr)]:
 		data_row = get_vaccine_metrics_by_district(city_date_tuple[0], city_date_tuple[1])
 		write_row_vaccine_by_district(data_row)
+
+		# Custom Alerts - Alert if there is an increment in th Covaxin supply in Gurgaon {since vaccine availability from the API does not mean avialble slots on vowin, so only alert when there is an increase in supply}
 		if data_row[3] == 'Gurgaon' and 'COVAXIN' in json.loads(data_row[-1]):
-			email_html_content = """\
-				<html>
-				  <body>
-				   	<div>{slots_info}</div> 
-				  </body>
-				</html>
-				""".format(slots_info=data_row[-1])
-			subject = "Gurgaon Covaxin Vaccine Slots Available"
-			mailer(email_html_content, subject)
+			vaccine_db = pd.read_csv(CSV_FILE_NAME)
+			last_vaccine_count = json.loads(vaccine_db[vaccine_db['district_name']=='Gurgaon'].iloc[-1]['vaccine_type_freq_json']).get('COVAXIN') or 0
+			new_vaccine_count = (json.loads(data_row[-1]).get('COVAXIN') or 0)
+
+			if new_vaccine_count > last_vaccine_count:
+				email_html_content = """\
+					<html>
+					  <body>
+					   	<div>{slots_info}</div> 
+					  </body>
+					</html>
+					""".format(slots_info=data_row[-1])
+				subject = "Gurgaon Covaxin Vaccine Slots Available"
+				mailer(email_html_content, subject)
 	do_logging("exiting")
 main()
 
