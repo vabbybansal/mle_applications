@@ -16,6 +16,7 @@ URLSTRING_VACCINE_BY_DISTRICT = "https://cdn-api.co-vin.in/api/v2/appointment/se
 CSV_FILE_NAME = '/Users/vaibhavb/Desktop/repos/dump/mle_applications/Challenges/cowin_api_apps/vaccine_availability.csv'
 MIN_DATE_TO_CHECK = '23-05-2021'
 DOSE_TYPE_TO_CHECK = 'available_capacity_dose2'
+DOSE_MIN_AGE = 45
 DISTRICT_MAP = {
 	'New_Delhi' : 140,
 	'Gurgaon' : 188	
@@ -65,13 +66,14 @@ def get_vaccine_metrics_by_district(district_id, datestr):
 
 		sessions = center['sessions']
 		for session in sessions:
-			session_capacity = session[DOSE_TYPE_TO_CHECK]
-			total_capacity += session_capacity
-			if session_capacity > 0:
-				vaccine_type = session['vaccine']
-				if vaccine_type not in vaccine_type_freq:
-					vaccine_type_freq[vaccine_type] = 0
-				vaccine_type_freq[vaccine_type] += session_capacity
+			if session['min_age_limit'] >= DOSE_MIN_AGE:
+				session_capacity = session[DOSE_TYPE_TO_CHECK]
+				total_capacity += session_capacity
+				if session_capacity > 0:
+					vaccine_type = session['vaccine']
+					if vaccine_type not in vaccine_type_freq:
+						vaccine_type_freq[vaccine_type] = 0
+					vaccine_type_freq[vaccine_type] += session_capacity
 		num_vaccine_type = len(vaccine_type_freq)
 
 	return [
