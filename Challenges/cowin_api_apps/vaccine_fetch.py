@@ -14,19 +14,8 @@ import pandas as pd
 # CONSTANTS
 URLSTRING_VACCINE_BY_DISTRICT = "https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/calendarByDistrict?district_id={district_id}&date={datestr}" 
 CSV_FILE_NAME = '/Users/vaibhavb/Desktop/repos/dump/mle_applications/Challenges/cowin_api_apps/vaccine_availability.csv'
-
-dir_path = os.path.dirname(os.path.realpath(__file__))
-LOG_FILE_NAME = os.path.join(dir_path, '/Users/vaibhavb/Desktop/repos/dump/mle_applications/Challenges/cowin_api_apps/test_log.log')
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-file_handler = logging.FileHandler(LOG_FILE_NAME)
-file_handler.setLevel(logging.INFO)
-file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-logger.addHandler(file_handler)
-
-def do_logging(message):
-    logger.info(message)
-
+MIN_DATE_TO_CHECK = '23-05-2021'
+DOSE_TYPE_TO_CHECK = 'available_capacity_dose2'
 DISTRICT_MAP = {
 	'New_Delhi' : 140,
 	'Gurgaon' : 188	
@@ -38,6 +27,19 @@ headers = {
 	'Accept-Language': 'hi_IN',
 	'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36'
 }
+
+# Set Logging
+dir_path = os.path.dirname(os.path.realpath(__file__))
+LOG_FILE_NAME = os.path.join(dir_path, '/Users/vaibhavb/Desktop/repos/dump/mle_applications/Challenges/cowin_api_apps/test_log.log')
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+file_handler = logging.FileHandler(LOG_FILE_NAME)
+file_handler.setLevel(logging.INFO)
+file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+logger.addHandler(file_handler)
+
+def do_logging(message):
+    logger.info(message)
 
 def get_routine(get_request_url_string, headers):
 	r = requests.get(
@@ -63,7 +65,7 @@ def get_vaccine_metrics_by_district(district_id, datestr):
 
 		sessions = center['sessions']
 		for session in sessions:
-			session_capacity = session['available_capacity']
+			session_capacity = session[DOSE_TYPE_TO_CHECK]
 			total_capacity += session_capacity
 			if session_capacity > 0:
 				vaccine_type = session['vaccine']
@@ -120,18 +122,24 @@ def mailer(email_html_content, subject):
 
 def main():
 	do_logging("started")
-	today_datestr = (datetime.date.today() + datetime.timedelta(days=0)).strftime("%d-%m-%Y")
-	for city_date_tuple in [(DISTRICT_MAP['New_Delhi'], today_datestr), (DISTRICT_MAP['Gurgaon'], today_datestr)]:
+
+	# Max of today or user_defined date on when to check
+	today_datestr = max(datetime.datetime.today(), datetime.datetime.strptime(MIN_DATE_TO_CHECK, '%d-%m-%Y')).strftime('%d-%m-%Y')
+
+	for city_date_tuple in [
+					(DISTRICT_MAP['Gurgaon'], today_datestr)
+					]:
 		data_row = get_vaccine_metrics_by_district(city_date_tuple[0], city_date_tuple[1])
 		write_row_vaccine_by_district(data_row)
 
-		# Custom Alerts - Alert if there is an increment in th Covaxin supply in Gurgaon {since vaccine availability from the API does not mean avialble slots on vowin, so only alert when there is an increase in supply}
 		if data_row[3] == 'Gurgaon' and 'COVAXIN' in json.loads(data_row[-1]):
-			vaccine_db = pd.read_csv(CSV_FILE_NAME)
-			last_vaccine_count = json.loads(vaccine_db[vaccine_db['district_name']=='Gurgaon'].iloc[-1]['vaccine_type_freq_json']).get('COVAXIN') or 0
-			new_vaccine_count = (json.loads(data_row[-1]).get('COVAXIN') or 0)
 
-			if new_vaccine_count > last_vaccine_count:
+			# Other cutom alerts such as increment in doses
+			# vaccine_db = pd.read_csv(CSV_FILE_NAME)
+			# last_vaccine_count = json.loads(vaccine_db[vaccine_db['district_name']=='Gurgaon'].iloc[-1]['vaccine_type_freq_json']).get('COVAXIN') or 0
+			# new_vaccine_count = (json.loads(data_row[-1]).get('COVAXIN') or 0)
+
+			if True:
 				email_html_content = """\
 					<html>
 					  <body>
