@@ -175,7 +175,7 @@ def main():
 					   	<br>
 					""".format(city_name=str(data_row[3]), slots_info=data_row[-2], center_names=data_row[-1])
 	if total_slots > 0:
-		subject = "{vaccine_type} Vaccine Slots Available".format(vaccine_type=str(VACCINE_TYPE))
+		subject = "{vaccine_type} Vaccine {total_slots} Slots Available".format(vaccine_type=str(VACCINE_TYPE), total_slots=total_slots)
 		mailer(email_html_content.format(email_content=district_content_accumulated), subject)
 
 	do_logging("exiting")
