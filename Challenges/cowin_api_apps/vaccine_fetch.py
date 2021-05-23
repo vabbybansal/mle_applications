@@ -18,9 +18,17 @@ MIN_DATE_TO_CHECK = '23-05-2021'
 DOSE_TYPE_TO_CHECK = 'available_capacity_dose2'
 DOSE_MIN_AGE = 45
 DISTRICT_MAP = {
+	'Gurgaon' : 188,
 	'New_Delhi' : 140,
-	'Gurgaon' : 188	
+	"Central Delhi" : 141,
+	"North Delhi" : 146,
+	"South Delhi" : 149,
+	"South West Delhi" : 150,
+	"North West Delhi" : 143,
+	"East Delhi" : 145,
+	"West Delhi" : 142
 }
+
 DISTRICT_ID_MAP = {v: k for k, v in DISTRICT_MAP.items()}
 headers = {
 	'accept': 'application/json', 
@@ -128,13 +136,12 @@ def main():
 	# Max of today or user_defined date on when to check
 	today_datestr = max(datetime.datetime.today(), datetime.datetime.strptime(MIN_DATE_TO_CHECK, '%d-%m-%Y')).strftime('%d-%m-%Y')
 
-	for city_date_tuple in [
-					(DISTRICT_MAP['Gurgaon'], today_datestr)
-					]:
-		data_row = get_vaccine_metrics_by_district(city_date_tuple[0], city_date_tuple[1])
+	for city in DISTRICT_MAP.values():
+
+		data_row = get_vaccine_metrics_by_district(city, today_datestr)
 		write_row_vaccine_by_district(data_row)
 
-		if data_row[3] == 'Gurgaon' and 'COVAXIN' in json.loads(data_row[-1]):
+		if 'COVAXIN' in json.loads(data_row[-1]):
 
 			# Other cutom alerts such as increment in doses
 			# vaccine_db = pd.read_csv(CSV_FILE_NAME)
@@ -149,7 +156,7 @@ def main():
 					  </body>
 					</html>
 					""".format(slots_info=data_row[-1])
-				subject = "Gurgaon Covaxin Vaccine Slots Available"
+				subject = "{city_name} Covaxin Vaccine Slots Available".format(city_name=str(data_row[3]))
 				mailer(email_html_content, subject)
 	do_logging("exiting")
 main()
