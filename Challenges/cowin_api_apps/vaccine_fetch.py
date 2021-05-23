@@ -17,6 +17,7 @@ CSV_FILE_NAME = '/Users/vaibhavb/Desktop/repos/dump/mle_applications/Challenges/
 MIN_DATE_TO_CHECK = '23-05-2021'
 DOSE_TYPE_TO_CHECK = 'available_capacity_dose2'
 DOSE_MIN_AGE = 45
+VACCINE_TYPE = 'COVAXIN'
 DISTRICT_MAP = {
 	'Gurgaon' : 188,
 	'New_Delhi' : 140,
@@ -69,15 +70,19 @@ def get_vaccine_metrics_by_district(district_id, datestr):
 	total_capacity = 0
 	num_vaccine_type = 0
 	vaccine_type_freq = {}
+	center_name_set = set()
 
 	for center in response_dict_json['centers']:
 
 		sessions = center['sessions']
+		center_name = center['name']
+
 		for session in sessions:
-			if session['min_age_limit'] >= DOSE_MIN_AGE:
+			if session['min_age_limit'] >= DOSE_MIN_AGE and session['vaccine'] == VACCINE_TYPE:
 				session_capacity = session[DOSE_TYPE_TO_CHECK]
 				total_capacity += session_capacity
 				if session_capacity > 0:
+					center_name_set.add(center_name)
 					vaccine_type = session['vaccine']
 					if vaccine_type not in vaccine_type_freq:
 						vaccine_type_freq[vaccine_type] = 0
@@ -91,7 +96,8 @@ def get_vaccine_metrics_by_district(district_id, datestr):
 		DISTRICT_ID_MAP[district_id],
 		total_capacity,
 		num_vaccine_type,
-		json.dumps(vaccine_type_freq)
+		json.dumps(vaccine_type_freq),
+		str(center_name_set)
 	]
 
 # # Data Logging
@@ -99,7 +105,7 @@ def write_row_vaccine_by_district(data_row):
 	if (path.exists(CSV_FILE_NAME) == False):
 		with open(CSV_FILE_NAME, 'w', newline='') as file_object:
 		    writer = csv.writer(file_object)
-		    writer.writerow(["timestamp", "datestr_vaccine_for", "district_id", "district_name", "total_capacity", "num_vaccine_types", "vaccine_type_freq_json"])
+		    writer.writerow(["timestamp", "datestr_vaccine_for", "district_id", "district_name", "total_capacity", "num_vaccine_types", "vaccine_type_freq_json", "center_name_set"])
 		    file_object.close()
 
 	with open(CSV_FILE_NAME, 'a', newline='') as file_object:
@@ -135,29 +141,43 @@ def main():
 
 	# Max of today or user_defined date on when to check
 	today_datestr = max(datetime.datetime.today(), datetime.datetime.strptime(MIN_DATE_TO_CHECK, '%d-%m-%Y')).strftime('%d-%m-%Y')
+	email_html_content = """\
+					<html>
+					  <body>
+					   	<div>{email_content}</div> 
+					  </body>
+					</html>
+					"""
+	district_content_accumulated = ""
+	total_slots = 0
 
 	for city in DISTRICT_MAP.values():
 
 		data_row = get_vaccine_metrics_by_district(city, today_datestr)
 		write_row_vaccine_by_district(data_row)
 
-		if 'COVAXIN' in json.loads(data_row[-1]):
+		district_slots_available = data_row[4]
+		total_slots += district_slots_available
+
+		if district_slots_available > 0:
 
 			# Other cutom alerts such as increment in doses
 			# vaccine_db = pd.read_csv(CSV_FILE_NAME)
-			# last_vaccine_count = json.loads(vaccine_db[vaccine_db['district_name']=='Gurgaon'].iloc[-1]['vaccine_type_freq_json']).get('COVAXIN') or 0
-			# new_vaccine_count = (json.loads(data_row[-1]).get('COVAXIN') or 0)
+			# last_vaccine_count = json.loads(vaccine_db[vaccine_db['district_name']=='Gurgaon'].iloc[-2]['vaccine_type_freq_json']).get('COVAXIN') or 0
+			# new_vaccine_count = (json.loads(data_row[-2]).get('COVAXIN') or 0)
 
 			if True:
-				email_html_content = """\
-					<html>
-					  <body>
-					   	<div>{slots_info}</div> 
-					  </body>
-					</html>
-					""".format(slots_info=data_row[-1])
-				subject = "{city_name} Covaxin Vaccine Slots Available".format(city_name=str(data_row[3]))
-				mailer(email_html_content, subject)
+				district_content_accumulated += """\
+					   	<b style='color:#ef7b61;'>{city_name}</b> 
+					   	<div style='color:#c64022;'>{slots_info}</div> 
+					   	<div style='color:#31738a;'>{center_names}</div> 
+					   	<br>
+					   	<br>
+					""".format(city_name=str(data_row[3]), slots_info=data_row[-2], center_names=data_row[-1])
+	if total_slots > 0:
+		subject = "{vaccine_type} Vaccine Slots Available".format(vaccine_type=str(VACCINE_TYPE))
+		mailer(email_html_content.format(email_content=district_content_accumulated), subject)
+
 	do_logging("exiting")
 main()
 
