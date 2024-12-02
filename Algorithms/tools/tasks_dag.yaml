@@ -1,0 +1,19 @@
+tasks:
+  task1:
+    dependencies: []
+    delay: 10
+  task2:
+    dependencies: ["task1"]
+    delay: 6
+  task3:
+    dependencies: ["task1"]
+    delay: 5
+  task4:
+    dependencies: ["task2", "task3"]
+    delay: 7
+  task5:
+      dependencies: ["task4"]
+      delay: 3
+  task6:
+      dependencies: ["task4", "task5"]
+      delay: 2

@@ -1,0 +1,5 @@
+fastapi==0.103.0
+uvicorn[standard]==0.23.0
+asyncio==3.4.3  # Only necessary for Python versions < 3.10
+langchain
+networkx[default]
