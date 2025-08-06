@@ -48,7 +48,8 @@ class FrozenLakeEnv(gym.Env):
             "policy_changes": [],
             "eval_num_iters": [],
             "policy": [],
-            "value_function": []
+            "value_function": [],
+            "avg_rewards": []
         }
 
         # self.print_transition_probabilities(self.actual_env)
@@ -149,6 +150,7 @@ class FrozenLakeEnv(gym.Env):
                         v += self.policy[state, action] * prob * (
                                 reward + self.gamma * self.value_function[next_state]
                             )
+                # sync batch update
                 new_V[state] = v
                 delta = max(delta, abs(v - self.value_function[state]))
                 self.logs["value_deltas"].append(delta)
@@ -158,6 +160,37 @@ class FrozenLakeEnv(gym.Env):
             if delta < self.theta:
                 self.logs["eval_num_iters"].append(eval_num_iters)
                 break
+
+    def value_iteration_driver_fn(self):
+        eval_num_iters = 0
+        while True:
+            delta = 0
+            new_V = np.zeros_like(self.value_function)
+            for state, action_dict in self.actual_env.P.items():
+                v = float('-inf')
+                for action, transitions in action_dict.items():
+                    for prob, next_state, reward, _ in transitions:
+                        v = max(v, prob * (reward + self.gamma * self.value_function[next_state]))
+                # sync batch update
+                new_V[state] = v
+                delta = max(delta, abs(v - self.value_function[state]))
+                self.logs["value_deltas"].append(delta)
+
+            self.value_function = new_V
+            eval_num_iters += 1
+            if delta < self.theta:
+                self.logs["eval_num_iters"].append(eval_num_iters)
+                break
+
+    def value_iteration(self):
+        self.value_iteration_driver_fn()
+        self.policy_improvement_greedy()
+        self.logs["avg_rewards"].append(self.evaluate_policy(num_episodes=1000, max_steps=100, render=False))
+
+        # Draw plots
+        self.plot_value_and_policy(self.value_function, self.policy, self.actual_env.desc)
+        self.plot_convergence()
+        self.plot_policy_heatmap(self.policy)
                 
     def policy_improvement_greedy(self):
         policy_stable = True
@@ -227,10 +260,10 @@ class FrozenLakeEnv(gym.Env):
 
         idx = 0
         while True:
-            print(f"Policy Evaluation step - {idx}")
+            # print(f"Policy Evaluation step - {idx}")
             self.policy_evaluation()
 
-            print(f"Policy Improvement step - {idx}")
+            # print(f"Policy Improvement step - {idx}")
             if use_greedy:
                 policy_stable = self.policy_improvement_greedy()
             else:
@@ -240,6 +273,7 @@ class FrozenLakeEnv(gym.Env):
             self.logs["policy"].append(self.policy.copy())
             self.logs["value_function"].append(self.value_function.copy())
             idx += 1
+            self.logs["avg_rewards"].append(self.evaluate_policy(num_episodes=1000, max_steps=100, render=False))
         
         # Draw plots
         lake_obj.plot_value_and_policy(lake_obj.value_function, lake_obj.policy, lake_obj.actual_env.desc)
@@ -337,23 +371,40 @@ class FrozenLakeEnv(gym.Env):
         value_deltas = self.logs["value_deltas"]
         policy_changes = self.logs["policy_changes"]
         eval_num_iters = self.logs["eval_num_iters"]
+        avg_rewards = self.logs.get("avg_rewards", None)
 
-        fig, axs = plt.subplots(1, 3, figsize=(12, 5))
+        # Always create 4 subplots, even if avg_rewards is None
+        fig, axs = plt.subplots(1, 4, figsize=(20, 5))
 
+        # Plot Value Function Convergence
         axs[0].plot(value_deltas, marker='o')
         axs[0].set_title("Value Function Convergence")
         axs[0].set_xlabel("Evaluation Iteration")
         axs[0].set_ylabel("Max Δ")
 
+        # Plot Policy Changes per Iteration
         axs[1].plot(policy_changes, marker='s', color='green')
         axs[1].set_title("Policy Changes per Iteration")
         axs[1].set_xlabel("Policy Improvement Iteration")
         axs[1].set_ylabel("Policy Changes")
 
+        # Plot Policy Evaluation Num Iterations
         axs[2].plot(eval_num_iters, marker='s', color='blue')
         axs[2].set_title("Policy Evaluation Num Iterations")
         axs[2].set_xlabel("Policy Iteration Outer Loop Iteration Number")
-        axs[2].set_ylabel("Policy Evaluation Inner Loop Numeber of Iterations")
+        axs[2].set_ylabel("Policy Evaluation Inner Loop Number of Iterations")
+
+        # Plot Average Rewards per Iteration (if available), else leave blank
+        if avg_rewards is not None:
+            axs[3].plot(avg_rewards, marker='^', color='purple')
+            axs[3].set_title("Average Rewards per Iteration")
+            axs[3].set_xlabel("Iteration")
+            axs[3].set_ylabel("Average Reward")
+        else:
+            axs[3].set_visible(False)
+
+        plt.tight_layout()
+        plt.show()
 
         # Plot value and policy for the last up to 4 iterations if stored in logs
         if "value_function" in self.logs and "policy" in self.logs:
@@ -362,14 +413,13 @@ class FrozenLakeEnv(gym.Env):
                 last_n = min(4, n_iters)
                 value_functions = self.logs["value_function"][-last_n:]
                 policies = self.logs["policy"][-last_n:]
-                fig, axes = plt.subplots(1, last_n, figsize=(4 * last_n, 4))
+                fig2, axes = plt.subplots(1, last_n, figsize=(4 * last_n, 4))
                 if last_n == 1:
                     axes = np.array([axes])
                 for i in range(last_n):
                     value_fn = value_functions[i]
                     policy = policies[i]
                     ax = axes[i]
-                    # Call plot_value_and_policy with ax as a keyword argument for ax to avoid TypeError
                     self.plot_value_and_policy(
                         value_fn,
                         policy,
@@ -379,8 +429,6 @@ class FrozenLakeEnv(gym.Env):
                     )
                 plt.tight_layout()
                 plt.show()
-
-        plt.show()
 
     def plot_policy_only(self, title="Policy Only"):
 
@@ -412,8 +460,38 @@ class FrozenLakeEnv(gym.Env):
         plt.tight_layout()
         plt.show()
 
+    def evaluate_policy(self, num_episodes=1000, max_steps=100, render=False):
+
+        total_rewards = []
+
+        for ep in range(num_episodes):
+            state, _ = self.env.reset()
+            episode_reward = 0
+
+            for step in range(max_steps):
+                action = np.argmax(self.policy[state])  # Greedy action
+                state, reward, terminated, truncated, _ = self.env.step(action)
+                episode_reward += reward
+                if render:
+                    self.env.render()
+                if terminated or truncated:
+                    break
+
+            total_rewards.append(episode_reward)
+
+        avg_reward = np.mean(total_rewards)
+        return avg_reward
+
+
 
 lake_obj = FrozenLakeEnv()
 print(lake_obj)
 lake_obj.policy_iteration(use_greedy=True)
+
+lake_obj = FrozenLakeEnv()
+print(lake_obj)
 lake_obj.policy_iteration(use_greedy=False)
+
+lake_obj = FrozenLakeEnv()
+print(lake_obj)
+lake_obj.value_iteration()
