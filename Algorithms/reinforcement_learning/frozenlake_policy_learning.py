@@ -460,25 +460,37 @@ class FrozenLakeEnv(gym.Env):
         plt.tight_layout()
         plt.show()
 
+    def custom_step(self, current_state, action):
+        """Custom step function that uses our modified transition probabilities"""
+        transitions = self.actual_env.P[current_state][action]
+        
+        # Sample from the transition probabilities
+        probs = [t[0] for t in transitions]
+        idx = np.random.choice(len(transitions), p=probs)
+        
+        prob, next_state, reward, done = transitions[idx]
+        
+        return next_state, reward, done, False, {}
+
     def evaluate_policy(self, num_episodes=1000, max_steps=100, render=False):
-
         total_rewards = []
-
+        
         for ep in range(num_episodes):
             state, _ = self.env.reset()
             episode_reward = 0
-
+            
             for step in range(max_steps):
                 action = np.argmax(self.policy[state])  # Greedy action
-                state, reward, terminated, truncated, _ = self.env.step(action)
+                # Use custom step instead of env.step
+                state, reward, terminated, truncated, _ = self.custom_step(state, action)
                 episode_reward += reward
                 if render:
-                    self.env.render()
+                    self.env.render()  # This is fine for visualization
                 if terminated or truncated:
                     break
-
+            
             total_rewards.append(episode_reward)
-
+        
         avg_reward = np.mean(total_rewards)
         return avg_reward
 
