@@ -2,11 +2,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys
 import os
+import time
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from problems.BaseRLEnvironment import BaseRLEnvironment
 from problems.model_free_frozen_lake import ModelFreeFrozenLake
 
-class MonteCarloControl:
+class Sarsa:
     def __init__(
         self,
         env: BaseRLEnvironment,
@@ -59,17 +60,47 @@ class MonteCarloControl:
         # update the policy using epsilon greedy (Note: this is not needed since for sampling, we directly use Q table)
         # self.env.policy = self.epsilon_greedy_policy_update(self.env.Q, self.epsilon)
 
-    def evaluation(self, trajectory: list[tuple[int, int, float]]):
-        # Reward to go from time step t to the end of the trajectory
+    def evaluation(self, max_steps: int = 200):
+
         G = 0.0
-        # for each state and action, update the value function (Every Visit Monte Carlo)
-        for state, action, reward in reversed(trajectory):
-            G = self.gamma * G + reward
-            # self.env.N[state][action] += 1  # we use alpha instead of 1/N
-            # converting 1/N to alpha was super important. WHY? TODO: research.
-            self.env.Q[state][action] = self.env.Q[state][action] + self.alpha * (G - self.env.Q[state][action])
-        # Log the return of the trajectory (from the start state)
+        done = False
+
+        s, steps = 0, 0
+        a, traj_explored = self.env.sample_epsilon_greedy_action(s, self.epsilon)
+
+        trajectory = []
+
+
+        while not done and steps < max_steps:
+            # Take action a and observe response r and s'
+            r, s_dash, done =  self.env.step_s_a(s, a)
+
+            trajectory.append((s, a, r))
+
+            if done:
+                td_target = r
+            else:
+                # sample a' from state s' using epsilon greedy policy
+                a_dash, is_step_exploration = self.env.sample_epsilon_greedy_action(s_dash, self.epsilon)
+                td_target = r + self.gamma * self.env.Q[s_dash][a_dash]
+
+                if is_step_exploration:
+                    traj_explored = True
+
+            self.env.Q[s][a] = self.env.Q[s][a] + self.alpha * (td_target - self.env.Q[s][a])
+
+            G += r * (self.gamma ** steps)
+            steps += 1
+
+            if not done:
+                s = s_dash
+                a = a_dash
+
+        self.logger["trajectories"].append(trajectory)
         self.logger["trajectory_returns"].append(round(G, 2))
+        self.logger["trajectory_lengths"].append(steps)
+        self.logger["exploration_flags"].append(traj_explored)
+        
 
     def fit(self, num_iterations=1000) -> dict:
         best_success = -1
@@ -79,16 +110,12 @@ class MonteCarloControl:
         metrics = {}
 
         for i in range(num_iterations):
-            # sample a single trajectory
-            trajectory, is_sample_exploration = self.env.sample_trajectory(epsilon_greedy=True, epsilon=self.epsilon, max_steps=200)
 
-            self.logger["trajectories"].append(trajectory)
-            self.logger["exploration_flags"].append(is_sample_exploration)  # Log exploration
             self.logger["epsilon_values"].append(self.epsilon)  # Log epsilon
             self.logger["alpha_values"].append(self.alpha)      # Log alpha (even if decaying)
 
             # evaluate trajectory (also logs return)
-            self.evaluation(trajectory)
+            self.evaluation()
 
             # improve policy and decay epsilon/alpha
             self.epsilon_greedy_improvement()
@@ -101,7 +128,7 @@ class MonteCarloControl:
 
             # policy checkpoint
             if i % 100 == 0:  # evaluate every 100 episodes
-                metrics_dict = self.env.evaluate_policy_metrics(num_episodes=50, gamma=self.gamma)
+                metrics_dict = self.env.evaluate_policy_metrics(num_episodes=200, gamma=self.gamma)
                 success = metrics_dict["success_rate"]
                 avg_gamma_return = metrics_dict["avg_gamma_return"]
                 avg_traj_len_eval = metrics_dict.get("avg_trajectory_length", None)
@@ -119,7 +146,7 @@ class MonteCarloControl:
         if best_Q is not None:
             self.env.Q = best_Q
 
-        final_metrics = self.env.evaluate_policy_metrics(num_episodes=50, gamma=self.gamma)
+        final_metrics = self.env.evaluate_policy_metrics(num_episodes=200, gamma=self.gamma)
         final_policy_success_rate = final_metrics["success_rate"]
         final_policy_avg_gamma_return = final_metrics["avg_gamma_return"]
         final_policy_avg_traj_length = final_metrics.get("avg_trajectory_length", 0.0)
@@ -141,78 +168,32 @@ class MonteCarloControl:
 
         return metrics
 
-def run_monte_carlo_control_varying_gamma(
-    gammas = None,
-    num_runs_per_gamma = 10,
-    num_iterations = 1000,
-    epsilon = 0.3,
-    epsilon_decay = 0.995,
-    alpha=0.1,
-    alpha_decay=0.995,
-    alpha_min=0.01
-):
-    """
-    Runs Monte Carlo Control for different gamma values, each averaged over several runs,
-    and plots the average trajectory return curve for each gamma.
-    """
-
-    plt.figure(figsize=(10, 6))
-    colors = plt.cm.viridis(np.linspace(0, 1, len(gammas)))
-
-    for idx, gamma in enumerate(gammas):
-        print(f"gamma: {gamma}, id: {idx} / {len(gammas)}")
-        all_returns = []
-        for run in range(num_runs_per_gamma):
-            env = ModelFreeFrozenLake()
-            mc_control = MonteCarloControl(
-                env,
-                epsilon=epsilon,
-                epsilon_decay=epsilon_decay,
-                gamma=gamma,
-                alpha=alpha,
-                alpha_decay=alpha_decay,
-                alpha_min=alpha_min
-            )
-            mc_control.fit(num_iterations=num_iterations)
-            all_returns.append(mc_control.logger["trajectory_returns"])
-        avg_returns = np.mean(all_returns, axis=0)
-        plt.plot(
-            range(len(avg_returns)),
-            avg_returns,
-            label=f"gamma={gamma:.2f} (return)",
-            color=colors[idx],
-            linestyle='-',
-            alpha=0.7
-        )
-
-    plt.xlabel("Iteration")
-    plt.ylabel("Average Trajectory Return")
-    plt.title(f"Monte Carlo Control: Trajectory Returns for Different Gamma Values\n(Averaged over {num_runs_per_gamma} runs)")
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
-
 if __name__ == "__main__":
     env = ModelFreeFrozenLake(
-        step_penalty=-0.001,
+        step_penalty=-0.01,
         hole_penalty=-5.0,
         goal_reward=20.0,
     )
-    monte_carlo_control = MonteCarloControl(
+    sarsa = Sarsa(
         env,
         epsilon=0.9,
         epsilon_decay=0.999,
-        epsilon_min=0.001,
+        epsilon_min=0.00001,
         gamma=0.99,
         alpha=0.5,
         alpha_decay=0.999,
         alpha_min=0.001
     )
-    metrics = monte_carlo_control.fit(num_iterations=10000)
+    start_time = time.time()
+    metrics = sarsa.fit(num_iterations=10000)
+    end_time = time.time()
+    print(f"Training time: {end_time - start_time:.2f} seconds")
     print("**************************************************")
     print("Metrics: ", metrics)
     print("**************************************************")
-    # print(monte_carlo_control.env.Q)
-    env.plot_training_stats(monte_carlo_control.logger, smooth_window=50)
+    # print(sarsa.env.Q)
+
+    env.plot_training_stats(sarsa.logger, smooth_window=50)
     env.plot_q_heatmap(title="Q-Value Heatmap (final Q)", show=False)
+
     plt.show()
