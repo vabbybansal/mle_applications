@@ -170,7 +170,7 @@ class Sarsa:
 
 if __name__ == "__main__":
     env = ModelFreeFrozenLake(
-        step_penalty=-0.15,
+        step_penalty=-0.01,
         hole_penalty=-5.0,
         goal_reward=20.0,
     )
