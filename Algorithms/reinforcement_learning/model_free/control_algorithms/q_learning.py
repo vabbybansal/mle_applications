@@ -176,7 +176,14 @@ class Q_Learning:
 
 if __name__ == "__main__":
     env = ModelFreeFrozenLake(
-        step_penalty=-0.15,
+        # very interesting behavior if this value is -0.01. At cell 47, since there are two H adjacent 
+        # to the main paths below, taking down action would actually lead to lower expected reward since agent can 
+        # fall to the hole (left) with 10 percent probs. At the same time, taking right action at cell 47 and below 
+        # makes sure that the agent does not fall in the holes at all and they can still the goal with a 10% probability.
+        # With a lower step penalty of -0.01, the agent has incentive to hit the wall again and again and it gets stuck 
+        # at 47 as per greedy policy. Making this -0.15, the incentive to increase path length decreases (and self cell looping),
+        # hence it has incentive to find the right path to the goal.
+        step_penalty=-0.15, 
         hole_penalty=-5.0,
         goal_reward=20.0,
     )

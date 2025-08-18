@@ -104,6 +104,7 @@ class Sarsa:
 
     def fit(self, num_iterations=1000) -> dict:
         best_success = -1
+        best_gamma_return = float('-inf')
         best_Q = None
         best_policy_iteration = None
         best_avg_gamma_return = None
@@ -135,8 +136,8 @@ class Sarsa:
                 self.logger["success_rates"].append(success)
                 self.logger["gamma_returns"].append(avg_gamma_return)
                 self.logger["eval_avg_traj_lengths"].append(avg_traj_len_eval if avg_traj_len_eval is not None else -1.0)
-                if success > best_success:
-                    best_success = success
+                if avg_gamma_return > best_gamma_return:
+                    best_gamma_return = avg_gamma_return
                     best_Q = self.env.Q.copy()
                     best_policy_iteration = i
                     best_avg_gamma_return = avg_gamma_return
@@ -169,6 +170,7 @@ class Sarsa:
         return metrics
 
 if __name__ == "__main__":
+    
     env = ModelFreeFrozenLake(
         step_penalty=-0.15,
         hole_penalty=-5.0,
@@ -195,5 +197,5 @@ if __name__ == "__main__":
 
     env.plot_training_stats(sarsa.logger, smooth_window=50)
     env.plot_q_heatmap(title="Q-Value Heatmap (final Q)", show=False)
-
+    plt.title("Sarsa")
     plt.show()

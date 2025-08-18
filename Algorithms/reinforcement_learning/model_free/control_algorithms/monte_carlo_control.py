@@ -73,6 +73,7 @@ class MonteCarloControl:
 
     def fit(self, num_iterations=1000) -> dict:
         best_success = -1
+        best_gamma_return = float('-inf')
         best_Q = None
         best_policy_iteration = None
         best_avg_gamma_return = None
@@ -108,8 +109,8 @@ class MonteCarloControl:
                 self.logger["success_rates"].append(success)
                 self.logger["gamma_returns"].append(avg_gamma_return)
                 self.logger["eval_avg_traj_lengths"].append(avg_traj_len_eval if avg_traj_len_eval is not None else -1.0)
-                if success > best_success:
-                    best_success = success
+                if avg_gamma_return > best_gamma_return:
+                    best_gamma_return = avg_gamma_return
                     best_Q = self.env.Q.copy()
                     best_policy_iteration = i
                     best_avg_gamma_return = avg_gamma_return
@@ -215,4 +216,5 @@ if __name__ == "__main__":
     # print(monte_carlo_control.env.Q)
     env.plot_training_stats(monte_carlo_control.logger, smooth_window=50)
     env.plot_q_heatmap(title="Q-Value Heatmap (final Q)", show=False)
+    plt.title("Monte Carlo Control")
     plt.show()
