@@ -7,7 +7,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from problems.BaseRLEnvironment import BaseRLEnvironment
 from problems.model_free_frozen_lake import ModelFreeFrozenLake
 
-class Sarsa:
+class Q_Learning:
     def __init__(
         self,
         env: BaseRLEnvironment,
@@ -66,12 +66,18 @@ class Sarsa:
         done = False
 
         s, steps = 0, 0
-        a, traj_explored = self.env.sample_epsilon_greedy_action(s, self.epsilon)
+        
 
         trajectory = []
+        traj_explored = False
 
 
         while not done and steps < max_steps:
+
+            # Choose a from s using policy derived from Q (eg. epsilon greedy)
+            a, is_sample_exploration = self.env.sample_epsilon_greedy_action(s, self.epsilon)
+            traj_explored = traj_explored or is_sample_exploration
+
             # Take action a and observe response r and s'
             r, s_dash, done =  self.env.step_s_a(s, a)
 
@@ -81,11 +87,11 @@ class Sarsa:
                 td_target = r
             else:
                 # sample a' from state s' using epsilon greedy policy
-                a_dash, is_step_exploration = self.env.sample_epsilon_greedy_action(s_dash, self.epsilon)
-                td_target = r + self.gamma * self.env.Q[s_dash][a_dash]
+                # a_dash, is_step_exploration = self.env.sample_epsilon_greedy_action(s_dash, self.epsilon)
+                # td_target = r + self.gamma * self.env.Q[s_dash][a_dash]
 
-                if is_step_exploration:
-                    traj_explored = True
+                max_q = np.max(self.env.Q[s_dash])
+                td_target = r + self.gamma * max_q
 
             self.env.Q[s][a] = self.env.Q[s][a] + self.alpha * (td_target - self.env.Q[s][a])
 
@@ -94,7 +100,6 @@ class Sarsa:
 
             if not done:
                 s = s_dash
-                a = a_dash
 
         self.logger["trajectories"].append(trajectory)
         self.logger["trajectory_returns"].append(round(G, 2))
@@ -104,6 +109,7 @@ class Sarsa:
 
     def fit(self, num_iterations=1000) -> dict:
         best_success = -1
+        best_gamma_return = float('-inf')
         best_Q = None
         best_policy_iteration = None
         best_avg_gamma_return = None
@@ -135,8 +141,8 @@ class Sarsa:
                 self.logger["success_rates"].append(success)
                 self.logger["gamma_returns"].append(avg_gamma_return)
                 self.logger["eval_avg_traj_lengths"].append(avg_traj_len_eval if avg_traj_len_eval is not None else -1.0)
-                if success > best_success:
-                    best_success = success
+                if avg_gamma_return > best_gamma_return:
+                    best_gamma_return = avg_gamma_return
                     best_Q = self.env.Q.copy()
                     best_policy_iteration = i
                     best_avg_gamma_return = avg_gamma_return
@@ -170,11 +176,11 @@ class Sarsa:
 
 if __name__ == "__main__":
     env = ModelFreeFrozenLake(
-        step_penalty=-0.01,
+        step_penalty=-0.15,
         hole_penalty=-5.0,
         goal_reward=20.0,
     )
-    sarsa = Sarsa(
+    q_Learning = Q_Learning(
         env,
         epsilon=0.9,
         epsilon_decay=0.999,
@@ -185,15 +191,15 @@ if __name__ == "__main__":
         alpha_min=0.001
     )
     start_time = time.time()
-    metrics = sarsa.fit(num_iterations=10000)
+    metrics = q_Learning.fit(num_iterations=10000)
     end_time = time.time()
     print(f"Training time: {end_time - start_time:.2f} seconds")
     print("**************************************************")
     print("Metrics: ", metrics)
     print("**************************************************")
-    # print(sarsa.env.Q)
+    # print(q_Learning.env.Q)
 
-    env.plot_training_stats(sarsa.logger, smooth_window=50)
+    env.plot_training_stats(q_Learning.logger, smooth_window=50)
     env.plot_q_heatmap(title="Q-Value Heatmap (final Q)", show=False)
-
+    plt.title("Q-Learning")
     plt.show()
