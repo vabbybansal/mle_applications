@@ -40,6 +40,7 @@ class Sarsa:
             "alpha_values": [],    # New: stores alpha at each iteration (for plotting)
             "best_policy_iteration": None,  # New: store best policy iteration for plotting
             "eval_avg_traj_lengths": [],  # New: avg trajectory length from evaluation at checkpoints
+            "num_times_goal_touched": 0,
         }
 
     def epsilon_greedy_policy_update(self, Q, epsilon):
@@ -74,6 +75,9 @@ class Sarsa:
         while not done and steps < max_steps:
             # Take action a and observe response r and s'
             r, s_dash, done =  self.env.step_s_a(s, a)
+
+            if s_dash == 63:
+                self.logger["num_times_goal_touched"] += 1
 
             trajectory.append((s, a, r))
 
@@ -194,6 +198,8 @@ if __name__ == "__main__":
     print("Metrics: ", metrics)
     print("**************************************************")
     # print(sarsa.env.Q)
+
+    print(f"Number of times goal was touched: {sarsa.logger['num_times_goal_touched']}")    
 
     env.plot_training_stats(sarsa.logger, smooth_window=50)
     env.plot_q_heatmap(title="Q-Value Heatmap (final Q)", show=False)
