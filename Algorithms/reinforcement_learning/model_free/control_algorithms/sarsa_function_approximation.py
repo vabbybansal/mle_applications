@@ -10,7 +10,7 @@ import torch.optim as optim
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from problems.BaseRLEnvironment import BaseRLEnvironment
 from problems.model_free_frozen_lake import ModelFreeFrozenLake
-
+import torch.nn.functional as F
 
 
 # Cost Function => J(w), parameterized by w
@@ -114,26 +114,39 @@ class Sarsa_Function_Approximation:
         for g in self.optimizer.param_groups:
             g['lr'] = self.step_size
 
-    def sample_epsilon_greedy_action(self, s:int, epsilon: float) -> tuple[int, bool]:
-        '''
-        input: state s, epsilon (float)
-        output: action a, is_sample_exploration (bool)
+    # def sample_epsilon_greedy_action(self, s:int, epsilon: float) -> tuple[int, bool]:
+    #     '''
+    #     input: state s, epsilon (float)
+    #     output: action a, is_sample_exploration (bool)
 
-        Greedy: finds the best action with the highest Q value in the Q NN network
-        '''
+    #     Greedy: finds the best action with the highest Q value in the Q NN network
+    #     '''
 
-        # if epsilon, choose an action randomly
+    #     # if epsilon, choose an action randomly
+    #     if np.random.rand() < epsilon:
+    #         return np.random.randint(self.env.n_actions), True
+    #     else:
+    #         # choose greedily
+    #         state_tensor = torch.nn.functional.one_hot(torch.tensor(s), num_classes=self.env.n_states).to(torch.float32).unsqueeze(0)  # shape: (batch, 1)
+    #         # get q values from the Q network
+    #         with torch.no_grad():
+    #             q_values = self.q_net(state_tensor)
+    #             # index of the best action
+    #             best_action = torch.argmax(q_values, dim=1).item()
+    #             return best_action, False
+
+    def _greedy_action_from_net(self, s: int) -> int:
+        x = F.one_hot(torch.tensor(s), num_classes=self.env.n_states).float().unsqueeze(0)
+        with torch.no_grad():
+            q = self.q_net(x).squeeze(0)
+            max_q = q.max()
+            ties = (q == max_q).nonzero(as_tuple=False).squeeze(-1)
+            return ties[torch.randint(len(ties), (1,))].item()
+
+    def sample_epsilon_greedy_action(self, s, epsilon):
         if np.random.rand() < epsilon:
             return np.random.randint(self.env.n_actions), True
-        else:
-            # choose greedily
-            state_tensor = torch.nn.functional.one_hot(torch.tensor(s), num_classes=self.env.n_states).to(torch.float32).unsqueeze(0)  # shape: (batch, 1)
-            # get q values from the Q network
-            with torch.no_grad():
-                q_values = self.q_net(state_tensor)
-                # index of the best action
-                best_action = torch.argmax(q_values, dim=1).item()
-                return best_action, False
+        return self._greedy_action_from_net(s), False
 
     def evaluation(self, max_steps: int = 200):
         
@@ -296,7 +309,7 @@ class Sarsa_Function_Approximation:
 
 if __name__ == "__main__":
     env = ModelFreeFrozenLake(
-        step_penalty=-0.015, 
+        step_penalty=-0.15, 
         hole_penalty=-5.0,
         goal_reward=20.0,
     )
@@ -311,6 +324,7 @@ if __name__ == "__main__":
         alpha_min=0.001,
         hidden=50,
         step_size_decay=1.0,
+        
     )
     start_time = time.time()
     metrics = sarsa_Function_Approximation.fit(num_iterations=10000)

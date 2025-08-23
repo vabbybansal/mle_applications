@@ -10,6 +10,8 @@ import torch.optim as optim
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from problems.BaseRLEnvironment import BaseRLEnvironment
 from problems.model_free_frozen_lake import ModelFreeFrozenLake
+import torch.nn.functional as F
+
 
 
 
@@ -114,26 +116,39 @@ class Q_Learning_Function_Approximation:
         for g in self.optimizer.param_groups:
             g['lr'] = self.step_size
 
-    def sample_epsilon_greedy_action(self, s:int, epsilon: float) -> tuple[int, bool]:
-        '''
-        input: state s, epsilon (float)
-        output: action a, is_sample_exploration (bool)
+    # def sample_epsilon_greedy_action(self, s:int, epsilon: float) -> tuple[int, bool]:
+    #     '''
+    #     input: state s, epsilon (float)
+    #     output: action a, is_sample_exploration (bool)
 
-        Greedy: finds the best action with the highest Q value in the Q NN network
-        '''
+    #     Greedy: finds the best action with the highest Q value in the Q NN network
+    #     '''
 
-        # if epsilon, choose an action randomly
+    #     # if epsilon, choose an action randomly
+    #     if np.random.rand() < epsilon:
+    #         return np.random.randint(self.env.n_actions), True
+    #     else:
+    #         # choose greedily
+    #         state_tensor = torch.nn.functional.one_hot(torch.tensor(s), num_classes=self.env.n_states).to(torch.float32).unsqueeze(0)  # shape: (batch, 1)
+    #         # get q values from the Q network
+    #         with torch.no_grad():
+    #             q_values = self.q_net(state_tensor)
+    #             # index of the best action
+    #             best_action = torch.argmax(q_values, dim=1).item()
+    #             return best_action, False
+
+    def _greedy_action_from_net(self, s: int) -> int:
+        x = F.one_hot(torch.tensor(s), num_classes=self.env.n_states).float().unsqueeze(0)
+        with torch.no_grad():
+            q = self.q_net(x).squeeze(0)
+            max_q = q.max()
+            ties = (q == max_q).nonzero(as_tuple=False).squeeze(-1)
+            return ties[torch.randint(len(ties), (1,))].item()
+
+    def sample_epsilon_greedy_action(self, s, epsilon):
         if np.random.rand() < epsilon:
             return np.random.randint(self.env.n_actions), True
-        else:
-            # choose greedily
-            state_tensor = torch.nn.functional.one_hot(torch.tensor(s), num_classes=self.env.n_states).to(torch.float32).unsqueeze(0)  # shape: (batch, 1)
-            # get q values from the Q network
-            with torch.no_grad():
-                q_values = self.q_net(state_tensor)
-                # index of the best action
-                best_action = torch.argmax(q_values, dim=1).item()
-                return best_action, False
+        return self._greedy_action_from_net(s), False
 
     def evaluation(self, max_steps: int = 200):
         
@@ -296,20 +311,23 @@ if __name__ == "__main__":
         # With a lower step penalty of -0.01, the agent has incentive to hit the wall again and again and it gets stuck 
         # at 47 as per greedy policy. Making this -0.15, the incentive to increase path length decreases (and self cell looping),
         # hence it has incentive to find the right path to the goal.
-        step_penalty=-0.0015, 
+        step_penalty=-0.15, 
         hole_penalty=-5.0,
         goal_reward=20.0,
     )
+
     q_Learning_Function_Approximation = Q_Learning_Function_Approximation(
         env,
-        epsilon=0.9,
-        epsilon_decay=0.9999,
-        epsilon_min=0.00001,
+        epsilon=0.3328218309968913,
+        epsilon_decay=0.9948418061,
+        epsilon_min=0.05,
         gamma=0.99,
         alpha=0.5,
         alpha_decay=0.999,
         alpha_min=0.001,
-        hidden=50,
+        hidden=200,
+        step_size_decay=0.9999999897,
+        step_size=0.001,
     )
     start_time = time.time()
     metrics = q_Learning_Function_Approximation.fit(num_iterations=10000)
