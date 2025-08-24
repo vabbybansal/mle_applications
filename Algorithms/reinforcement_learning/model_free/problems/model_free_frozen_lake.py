@@ -5,6 +5,9 @@ import matplotlib.patches as mpatches
 import seaborn as sns
 import sys
 import os
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from BaseRLEnvironment import BaseRLEnvironment
 
@@ -131,6 +134,50 @@ class ModelFreeFrozenLake(gym.Env, BaseRLEnvironment):
                     (p_right,    ns_r, reward(ns_r), done_for(ns_r)),
                 ]
 
+
+    def sample_trajectory_pi_nn(self, pi: nn.Module, max_steps: int = 10000) -> tuple[list[tuple[int, int, float]], bool]:
+        """
+        Samples a trajectory from the environment using a policy network.
+
+        Returns:
+            list of (state, action, reward) tuples:
+                state  (int): the state index
+                action (int): the action taken
+                reward (float): the reward received after taking the action
+        """
+
+        trajectory = []
+        state = 0
+        steps = 0
+
+        while True:
+            
+            s_one_hot = F.one_hot(torch.tensor(state), num_classes=self.n_states).to(torch.float32).unsqueeze(0)
+            logits = pi(s_one_hot)
+            dist = torch.distributions.Categorical(logits=logits) # Create a discrete prob dist by appying softmax to logits
+            # samples based on the prob dist
+            action = dist.sample().item()
+
+
+            transitions = self.actual_env.P[state][action]
+            probs = [t[0] for t in transitions]
+            next_states = [t[1] for t in transitions]
+            rewards = [t[2] for t in transitions]
+            dones = [t[3] for t in transitions]
+
+            idx = np.random.choice(len(transitions), p=probs)
+            next_state = next_states[idx]            
+            reward = rewards[idx]
+            done = dones[idx]
+
+            trajectory.append((state, action, reward))
+            state = next_state
+            steps += 1
+
+            if done or steps >= max_steps:
+                break
+
+        return trajectory
     
 
     def sample_trajectory(self, epsilon_greedy: bool = True, epsilon: float = 0.1, max_steps: int = 10000) -> tuple[list[tuple[int, int, float]], bool]:
@@ -465,7 +512,7 @@ class ModelFreeFrozenLake(gym.Env, BaseRLEnvironment):
                 break
         return path
 
-    def evaluate_policy_metrics(self, num_episodes: int = 100, gamma: float = 0.99) -> dict:
+    def evaluate_policy_metrics(self, num_episodes: int = 100, gamma: float = 0.99, pi: nn.Module = None) -> dict:
         """
         Evaluate the current greedy policy (derived from self.Q) over num_episodes.
         Returns a dict with success_rate, avg_gamma_return, and avg_trajectory_length.
@@ -474,7 +521,10 @@ class ModelFreeFrozenLake(gym.Env, BaseRLEnvironment):
         returns = []
         lengths = []
         for _ in range(num_episodes):
-            traj, _ = self.sample_trajectory(epsilon_greedy=False)
+            if pi is None:
+                traj, _ = self.sample_trajectory(epsilon_greedy=False)
+            else:
+                traj = self.sample_trajectory_pi_nn(pi, max_steps=200)
             if len(traj) > 0 and traj[-1][2] == self.goal_reward:
                 successes += 1
             G = sum(r * (gamma ** t) for t, (_, _, r) in enumerate(traj))
