@@ -1,5 +1,13 @@
 import sys
 import os
+
+THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_FREE_DIR = os.path.dirname(THIS_DIR)  # .../model_free
+# (Optional) make driver also robust:
+if MODEL_FREE_DIR not in sys.path:
+    sys.path.insert(0, MODEL_FREE_DIR)
+
+
 import time
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from problems.BaseRLEnvironment import BaseRLEnvironment
@@ -12,6 +20,34 @@ import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import ray
+
+@ray.remote  # Decorator to make this function run in parallel with Ray
+def _sample_traj_worker(pi_state_dict, n_states, n_actions, hidden_dim, env_kwargs, max_steps, model_free_dir):
+    import sys, torch
+    from torch import nn
+
+    # Ensure the worker can import "problems.*"
+    if model_free_dir not in sys.path:
+        sys.path.insert(0, model_free_dir)
+
+    from problems.model_free_frozen_lake import ModelFreeFrozenLake  # now resolves
+
+    class _Pi(nn.Module):  # Local copy of policy network for parallel execution
+        def __init__(self, num_states, num_actions, hidden_dim=128):
+            super().__init__()
+            self.fc1 = nn.Linear(num_states, hidden_dim)
+            self.act = nn.ReLU()
+            self.fc2 = nn.Linear(hidden_dim, num_actions)
+        def forward(self, x):
+            return self.fc2(self.act(self.fc1(x)))
+
+    pi = _Pi(n_states, n_actions, hidden_dim)
+    pi.load_state_dict(pi_state_dict)  # Load policy weights from main process
+    pi.eval()  # Set to evaluation mode
+
+    env = ModelFreeFrozenLake(**env_kwargs)
+    return env.sample_trajectory_pi_nn(pi, max_steps=max_steps)  # Sample one trajectory
+
 
 class Pi(nn.Module):
     def __init__(self, num_states, num_actions, hidden_dim=128):
@@ -100,41 +136,78 @@ class PolicyGradient:
 
         self.backward_pass(loss)
 
-
     def fit(self, num_iterations=100, batch_size=100):
-        
+        # Initialize Ray once
+        if not ray.is_initialized():
+            ray.init(
+                ignore_reinit_error=True, 
+                include_dashboard=True,
+                num_cpus=6  # Adjust based on your CPU cores
+            )
+
         best_avg_gamma_return = float('-inf')
         best_pi = None
+
+        # Cache reusable values to avoid recomputing
+        hidden_dim = self.pi.fc1.out_features
+        env_kwargs = {
+            "step_penalty": self.env.step_penalty,
+            "hole_penalty": self.env.hole_penalty,
+            "goal_reward": self.env.goal_reward,
+        }
+        max_steps = 200  # Max steps per trajectory
+
         for i in tqdm(range(num_iterations), desc="Training", leave=True):
-            trajectory_batch = []
-            for _ in range(batch_size):
-                trajectory_batch.append(self.env.sample_trajectory_pi_nn(self.pi, max_steps=200))
+            # Move policy weights to CPU and share via Ray
+            weights_cpu = {k: v.detach().cpu() for k, v in self.pi.state_dict().items()}
+            weights_ref = ray.put(weights_cpu)
+
+            # Parallel trajectory sampling using Ray
+            futures = [
+                _sample_traj_worker.remote(
+                    weights_ref,
+                    self.env.n_states,
+                    self.env.n_actions,
+                    hidden_dim,
+                    env_kwargs,
+                    max_steps,
+                    MODEL_FREE_DIR,  # Needed for env recreation in workers
+                )
+                for _ in range(batch_size)
+            ]
+            trajectory_batch = ray.get(futures)
+
+            # Update policy using collected trajectories
             self.update_policy_batch(trajectory_batch)
 
-            if i % 1 == 0:  # Update every 1 iterations for better performance
+            # evaluation + logging + plotting
+            if i % 1 == 0:
                 metrics_dict = self.env.evaluate_policy_metrics(num_episodes=200, gamma=self.gamma, pi=self.pi)
-
                 print(f"metrics_dict at i: {i} is {metrics_dict}")
                 self.logger["success_rates"].append(metrics_dict["success_rate"])
                 avg_gamma_return = metrics_dict["avg_gamma_return"]
                 self.logger["gamma_returns"].append(avg_gamma_return)
-                self.logger["eval_avg_traj_lengths"].append(metrics_dict.get("avg_trajectory_length", None) if metrics_dict.get("avg_trajectory_length", None) is not None else -1.0)
-
+                self.logger["eval_avg_traj_lengths"].append(
+                    metrics_dict.get("avg_trajectory_length", None)
+                    if metrics_dict.get("avg_trajectory_length", None) is not None else -1.0
+                )
                 if avg_gamma_return > best_avg_gamma_return:
-                    # best_pi = self.pi.copy()
                     best_policy_iteration = i
                     best_avg_gamma_return = avg_gamma_return
-                
-                # Plot real-time metrics
                 self._plot_realtime_metrics()
-        
-        # Store the best policy iteration for plotting
+
         self.logger["best_policy_iteration"] = best_policy_iteration
-        
-        # Turn off interactive mode and keep the plot open
+
+        # Clean up matplotlib
         if self.fig is not None:
-            plt.ioff()  # Turn off interactive mode
-            plt.show(block=True)  # Keep the plot open until manually closed
+            plt.ioff()
+            plt.show(block=True)
+
+        # Ensure Ray is shutdown properly
+        try:
+            ray.shutdown()
+        except Exception:
+            pass
 
     def _plot_realtime_metrics(self):
         """Plot real-time training metrics in the same window."""
@@ -174,7 +247,7 @@ class PolicyGradient:
             labels = [l.get_label() for l in lines]
             self.ax1.legend(lines, labels, loc='upper left')
             
-            self.ax1.set_title('Policy Training Progress (Real-time)')
+            self.ax1.set_title('Policy Training Progress (Real-time) v2')
             self.ax1.grid(True, alpha=0.3)
             
             # Update the plot
@@ -203,7 +276,7 @@ if __name__ == "__main__":
         hidden=20,
     )
     start_time = time.time()
-    metrics = policy_gradient.fit(num_iterations=1000, batch_size=100)
+    metrics = policy_gradient.fit(num_iterations=1000, batch_size=400)
     end_time = time.time()
     print(f"Training time: {end_time - start_time:.2f} seconds")
 
