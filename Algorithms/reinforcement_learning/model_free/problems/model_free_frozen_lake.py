@@ -180,6 +180,38 @@ class ModelFreeFrozenLake(gym.Env, BaseRLEnvironment):
         return trajectory
     
 
+    def sample_trajectory_step_sars_pi_nn(self, pi: nn.Module, s:int = 0) -> tuple[int, int, float, int, bool]:
+        """
+        Samples a step from the environment using a policy network.
+
+        Returns:
+            tuple of (state, action, reward, next_state, done):
+                state  (int): the state index
+                action (int): the action taken
+                reward (float): the reward received after taking the action
+                next_state (int): the next state index
+        """
+
+        s_one_hot = F.one_hot(torch.tensor(s), num_classes=self.n_states).to(torch.float32).unsqueeze(0)
+        logits = pi(s_one_hot)
+        dist = torch.distributions.Categorical(logits=logits) # Create a discrete prob dist by appying softmax to logits
+        # samples based on the prob dist
+        a = dist.sample().item()
+
+        transitions = self.actual_env.P[s][a]
+        probs = [t[0] for t in transitions]
+        next_states = [t[1] for t in transitions]
+        rewards = [t[2] for t in transitions]
+        dones = [t[3] for t in transitions]
+
+        idx = np.random.choice(len(transitions), p=probs)
+        s_dash = next_states[idx]            
+        r = rewards[idx]
+        done = dones[idx]
+        
+        return s, a, r, s_dash, done
+    
+
     def sample_trajectory(self, epsilon_greedy: bool = True, epsilon: float = 0.1, max_steps: int = 10000) -> tuple[list[tuple[int, int, float]], bool]:
         """
         Samples a trajectory from the environment.
