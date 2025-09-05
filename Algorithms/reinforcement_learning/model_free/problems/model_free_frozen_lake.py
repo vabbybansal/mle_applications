@@ -154,6 +154,11 @@ class ModelFreeFrozenLake(gym.Env, BaseRLEnvironment):
             
             s_one_hot = F.one_hot(torch.tensor(state), num_classes=self.n_states).to(torch.float32).unsqueeze(0)
             logits = pi(s_one_hot)
+            if isinstance(logits, tuple): # if the policy network returns a tuple <pi, v>, get the first element
+                logits = logits[0]
+            else: # if the policy network returns a single logits, get the logits
+                logits = logits
+
             dist = torch.distributions.Categorical(logits=logits) # Create a discrete prob dist by appying softmax to logits
             # samples based on the prob dist
             action = dist.sample().item()
@@ -193,7 +198,14 @@ class ModelFreeFrozenLake(gym.Env, BaseRLEnvironment):
         """
 
         s_one_hot = F.one_hot(torch.tensor(s), num_classes=self.n_states).to(torch.float32).unsqueeze(0)
+
+        # get logits from the policy network
         logits = pi(s_one_hot)
+        if isinstance(logits, tuple): # if the policy network returns a tuple <pi, v>, get the first element
+            logits = logits[0]
+        else: # if the policy network returns a single logits, get the logits
+            logits = logits
+
         dist = torch.distributions.Categorical(logits=logits) # Create a discrete prob dist by appying softmax to logits
         # samples based on the prob dist
         a = dist.sample().item()
