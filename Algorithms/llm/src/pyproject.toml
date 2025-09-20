@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools==80.9.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "llm"
+version = "0.1.0"
+description = "train and serve an instruction tuned llm"
+requires-python = "==3.10.12"
+dependencies = ["torch>=2.5.0", "numpy=1.26.4"]
+
+[project.optional-dependencies]
+dev = []
+
+[project.scripts]
+
+[tools.setuptools]
