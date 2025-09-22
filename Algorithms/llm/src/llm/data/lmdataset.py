@@ -1,4 +1,5 @@
 from torch.utils.data import Dataset, DataLoader
+import torch
 
 class LMDataset(Dataset):
 	"""
@@ -33,8 +34,8 @@ class LMDataset(Dataset):
 
 	def create_lm_data(self, token_ids):
 		for i in range(0, len(token_ids) - self.context_length, self.stride):
-			self.input_ids.append(token_ids[i: i + self.context_length])
-			self.target_ids.append(token_ids[i+1: i + self.context_length + 1])
+			self.input_ids.append(torch.tensor(token_ids[i: i + self.context_length]))
+			self.target_ids.append(torch.tensor(token_ids[i+1: i + self.context_length + 1]))
 
 	def __len__(self):
 		return len(self.input_ids)
