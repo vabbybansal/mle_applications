@@ -28,6 +28,7 @@ class LMDataset(Dataset):
 		self.create_lm_data(token_ids)
 
 	def tokenize(self, txt):
+		# split the text into tokens using an already learnt encoder
 		token_ids = self.tokenizer.encode(txt)
 		assert len(token_ids) > self.context_length
 		return token_ids
